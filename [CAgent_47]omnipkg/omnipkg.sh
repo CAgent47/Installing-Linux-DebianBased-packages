@@ -160,7 +160,7 @@ else
     echo -e "  ${YELLOW}⚠${RESET} No clean command found\n"
 fi
 
-# Kill sudo keepalive
+# Kill sudo
 kill $SUDO_KEEPALIVE_PID 2>/dev/null
 
 # Final message
