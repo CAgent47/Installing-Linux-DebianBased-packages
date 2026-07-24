@@ -139,6 +139,11 @@ Issues and pull requests are welcome — especially additions of new package man
 Distributed under the **MIT License**. See `LICENSE` for details.
 
 ---
+[#Automation](https://github.com/topics/automation)
+[#Linux](https://github.com/topics/linux)
+[#Bash](https://github.com/topics/bash)
+[#CAgent_47](https://github.com/topics/CAgent47)
+---
 
 <div align="center">
 
@@ -146,3 +151,7 @@ Distributed under the **MIT License**. See `LICENSE` for details.
 [GitHub](https://github.com/CAgent47) · [LinkedIn](https://www.linkedin.com/in/mohammad-shaygan-2a96a8387) · [X](https://x.com/CAgent_47)
 
 </div>
+
+---
+
+[banner](banner.png)
