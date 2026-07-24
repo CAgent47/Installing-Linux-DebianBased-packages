@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniPKG(V2.0)-Guid</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --kraft: #ded0ac;
+  --kraft-dark: #c9b896;
+  --ink: #201d16;
+  --stamp-blue: #1f4b8f;
+  --stamp-red: #a63d2f;
+  --stamp-green: #2f6f4e;
+  --tape-yellow: #e8ac1e;
+  --paper-light: #f2e9d3;
+  --line: rgba(32, 29, 22, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+body {
+  margin: 0;
+  background: var(--kraft);
+  background-image:
+    radial-gradient(rgba(32,29,22,0.035) 1px, transparent 1px);
+  background-size: 4px 4px;
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.55;
+}
+
+a { color: var(--stamp-blue); }
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+  outline: 3px solid var(--stamp-blue);
+  outline-offset: 3px;
+}
+
+.wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- HERO ---------- */
+.hero {
+  padding: 72px 0 56px;
+  position: relative;
+}
+
+.tracking-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  opacity: 0.65;
+  margin-bottom: 28px;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.hero-label {
+  border: 3px solid var(--ink);
+  background: var(--paper-light);
+  padding: 36px 32px 32px;
+  position: relative;
+  box-shadow: 6px 6px 0 rgba(32,29,22,0.12);
+}
+
+.hero-label::before,
+.hero-label::after {
+  content: "";
+  position: absolute;
+  top: -3px; bottom: -3px;
+  width: 18px;
+  background-image: radial-gradient(circle at center, var(--kraft) 5px, transparent 5.5px);
+  background-size: 18px 18px;
+  background-repeat: repeat-y;
+}
+.hero-label::before { left: -9px; }
+.hero-label::after { right: -9px; }
+
+.eyebrow-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-bottom: 2px dashed var(--line);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+h1.logo {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: clamp(48px, 9vw, 96px);
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+  line-height: 0.95;
+}
+
+.tagline {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: clamp(14px, 2.2vw, 18px);
+  color: var(--stamp-blue);
+  margin: 0 0 28px;
+  font-weight: 500;
+}
+
+.desc {
+  font-size: 17px;
+  max-width: 58ch;
+  margin: 0 0 32px;
+}
+
+.cta-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 14px 26px;
+  border: 3px solid var(--ink);
+  display: inline-block;
+  transform: rotate(-1deg);
+  transition: transform 0.15s ease;
+}
+.btn:hover { transform: rotate(0deg) translateY(-2px); }
+
+.btn-primary { background: var(--ink); color: var(--paper-light); }
+.btn-secondary { background: transparent; color: var(--ink); }
+
+/* ---------- SECTION SCAFFOLD ---------- */
+section { padding: 56px 0; }
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 32px;
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 12px;
+}
+
+.section-stamp {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper-light);
+  padding: 4px 10px;
+  transform: rotate(-2deg);
+}
+
+.section-head h2 {
+  font-family: 'Space Mono', monospace;
+  font-size: clamp(22px, 3.4vw, 30px);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- CONTENTS / PACKING LIST ---------- */
+.packing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2px;
+  background: var(--ink);
+  border: 3px solid var(--ink);
+}
+
+.packing-list li {
+  background: var(--paper-light);
+  padding: 22px 20px;
+  display: flex;
+  gap: 14px;
+}
+
+.check {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  color: var(--stamp-green);
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.item-title {
+  font-weight: 700;
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.item-desc { margin: 0; font-size: 14px; opacity: 0.85; }
+
+/* ---------- MANIFEST GRID (package managers) ---------- */
+.manifest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.manifest-tile {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 14px 8px;
+  border: 2px solid var(--ink);
+  background: var(--paper-light);
+  transform: rotate(0deg);
+}
+.manifest-tile:nth-child(3n+1) { transform: rotate(-1.2deg); }
+.manifest-tile:nth-child(3n+2) { transform: rotate(0.8deg); }
+.manifest-tile:nth-child(4n) { transform: rotate(-0.6deg); }
+
+/* ---------- HANDLING INSTRUCTIONS ---------- */
+.steps {
+  counter-reset: step;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 2px dashed var(--line);
+}
+.steps li:last-child { border-bottom: none; }
+
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 22px;
+  color: var(--stamp-blue);
+}
+
+.step-title { font-weight: 700; margin: 0 0 6px; font-size: 16px; }
+.step-desc { margin: 0 0 12px; font-size: 14.5px; }
+
+code, pre {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+pre.code-block {
+  background: var(--ink);
+  color: var(--paper-light);
+  padding: 14px 18px;
+  overflow-x: auto;
+  font-size: 13.5px;
+  margin: 0;
+  border-left: 4px solid var(--tape-yellow);
+}
+
+/* ---------- FRAGILE / SECURITY NOTE ---------- */
+.fragile-box {
+  border: 4px solid var(--stamp-red);
+  padding: 28px;
+  position: relative;
+  background: var(--paper-light);
+}
+
+.fragile-stamp {
+  position: absolute;
+  top: -18px;
+  left: 24px;
+  background: var(--paper-light);
+  border: 3px solid var(--stamp-red);
+  color: var(--stamp-red);
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  padding: 4px 14px;
+  transform: rotate(-2deg);
+}
+
+.fragile-box p { margin: 8px 0 0; font-size: 15px; }
+
+/* ---------- CUSTOMS / LICENSE ---------- */
+.customs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  border: 3px dashed var(--ink);
+  padding: 24px 28px;
+}
+
+.customs-mark {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  border: 3px solid var(--stamp-green);
+  color: var(--stamp-green);
+  padding: 8px 16px;
+  transform: rotate(-3deg);
+}
+
+/* ---------- FOOTER ---------- */
+footer {
+  padding: 48px 0 64px;
+  border-top: 3px solid var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+}
+
+.footer-row {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-links a { margin-left: 18px; }
+.footer-links a:first-child { margin-left: 0; }
+
+@media (max-width: 640px) {
+  .hero-label { padding: 28px 20px; }
+  .customs { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="tracking-id">
+      <span>MANIFEST NO. OMNIPKG-2.0</span>
+      <span>ORIGIN: TERMINAL</span>
+      <span>DESTINATION: ANY LINUX SYSTEM</span>
+    </div>
+
+    <div class="hero-label">
+      <div class="eyebrow-row">
+        <span>📦 Package Bootstrapper</span>
+        <span>v2.0 · MIT Licensed</span>
+      </div>
+      <h1 class="logo">OMNIPKG</h1>
+      <p class="tagline">&gt; one script. any distro. any package manager.</p>
+      <p class="desc">
+        Stop looking up install commands every time you set up a machine. OmniPKG detects your
+        package manager, updates your system, installs your list, and cleans up — across 22
+        different package managers, from <code>apt</code> to <code>winget</code>.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/CAgent47/OmniPKG" target="_blank" rel="noopener">View on GitHub ▸</a>
+        <a class="btn btn-secondary" href="#handling">Read the Install Guide</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTENTS / FEATURES -->
+  <section id="contents">
+    <div class="section-head">
+      <span class="section-stamp">Contents</span>
+      <h2>What's inside the box</h2>
+    </div>
+    <ul class="packing-list">
+      <li>
+        <span class="check">☑</span>
+        <div>
+          <p class="item-title">Unified config file</p>
+          <p class="item-desc">Package lists and per-manager commands live in one packages.json — no juggling separate files.</p>
+        </div>
+      </li>
+      <li>
+        <span class="check">☑</span>
+        <div>
+          <p class="item-title">22 package managers</p>
+          <p class="item-desc">apt, dnf, pacman, zypper, apk, brew, winget, choco, nix, and more — out of the box.</p>
+        </div>
+      </li>
+      <li>
+        <span class="check">☑</span>
+        <div>
+          <p class="item-title">One-time sudo prompt</p>
+          <p class="item-desc">Enter your password once — the session stays alive for the rest of the run.</p>
+        </div>
+      </li>
+      <li>
+        <span class="check">☑</span>
+        <div>
+          <p class="item-title">Live progress feedback</p>
+          <p class="item-desc">A spinner and progress indicator so you always know something's happening.</p>
+        </div>
+      </li>
+      <li>
+        <span class="check">☑</span>
+        <div>
+          <p class="item-title">Redesigned terminal UI</p>
+          <p class="item-desc">Boxed banner, color-coded sections, readable status messages at every step.</p>
+        </div>
+      </li>
+      <li>
+        <span class="check">☑</span>
+        <div>
+          <p class="item-title">Automatic cleanup</p>
+          <p class="item-desc">Orphaned packages and caches removed automatically per package manager.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- MANIFEST GRID -->
+  <section id="manifest">
+    <div class="section-head">
+      <span class="section-stamp">Manifest</span>
+      <h2>Supported carriers</h2>
+    </div>
+    <div class="manifest-grid">
+      <div class="manifest-tile">apt</div>
+      <div class="manifest-tile">dnf</div>
+      <div class="manifest-tile">yum</div>
+      <div class="manifest-tile">pacman</div>
+      <div class="manifest-tile">zypper</div>
+      <div class="manifest-tile">apk</div>
+      <div class="manifest-tile">xbps</div>
+      <div class="manifest-tile">eopkg</div>
+      <div class="manifest-tile">emerge</div>
+      <div class="manifest-tile">nix</div>
+      <div class="manifest-tile">guix</div>
+      <div class="manifest-tile">pkg</div>
+      <div class="manifest-tile">brew</div>
+      <div class="manifest-tile">flatpak</div>
+      <div class="manifest-tile">snap</div>
+      <div class="manifest-tile">winget</div>
+      <div class="manifest-tile">choco</div>
+      <div class="manifest-tile">scoop</div>
+      <div class="manifest-tile">pkgin</div>
+      <div class="manifest-tile">opkg</div>
+      <div class="manifest-tile">swupd</div>
+      <div class="manifest-tile">urpmi</div>
+      <div class="manifest-tile">tdnf</div>
+    </div>
+  </section>
+
+  <!-- HANDLING INSTRUCTIONS -->
+  <section id="handling">
+    <div class="section-head">
+      <span class="section-stamp">Handling Instructions</span>
+      <h2>Install in 4 steps</h2>
+    </div>
+    <ol class="steps">
+      <li>
+        <div>
+          <p class="step-title">Clone the repository</p>
+          <p class="step-desc">Pull the project down to your machine.</p>
+          <pre class="code-block">git clone https://github.com/CAgent47/OmniPKG.git
+cd OmniPKG</pre>
+        </div>
+      </li>
+      <li>
+        <div>
+          <p class="step-title">Make it executable</p>
+          <p class="step-desc">Grant run permission to the main script.</p>
+          <pre class="code-block">chmod +x omnipkg.sh</pre>
+        </div>
+      </li>
+      <li>
+        <div>
+          <p class="step-title">Run it</p>
+          <p class="step-desc">Enter your sudo password once when asked.</p>
+          <pre class="code-block">./omnipkg.sh</pre>
+        </div>
+      </li>
+      <li>
+        <div>
+          <p class="step-title">Customize your package list</p>
+          <p class="step-desc">Edit the install line for your package manager in the config, then re-run anytime.</p>
+          <pre class="code-block">core/packages.json</pre>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- FRAGILE / SECURITY -->
+  <section id="fragile">
+    <div class="fragile-box">
+      <span class="fragile-stamp">⚠ Fragile — Read First</span>
+      <p>
+        OmniPKG asks for your sudo password once and keeps the session alive for the duration
+        of the script, instead of prompting repeatedly. This is a convenience trade-off meant
+        for machines you personally control — always read a script before running it with
+        elevated privileges.
+      </p>
+    </div>
+  </section>
+
+  <!-- CUSTOMS / LICENSE -->
+  <section id="license">
+    <div class="customs">
+      <div>
+        <p style="margin:0 0 4px; font-weight:700; font-family:'Space Mono',monospace; font-size:15px;">
+          Customs Declaration
+        </p>
+        <p style="margin:0; font-size:14px;">Free to use, modify, and redistribute.</p>
+      </div>
+      <span class="customs-mark">MIT LICENSED ✓</span>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-row">
+      <span>OMNIPKG v2.0 — Made by CAgent_47</span>
+      <span class="footer-links">
+        <a href="https://github.com/CAgent47" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.linkedin.com/in/mohammad-shaygan-2a96a8387" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://x.com/CAgent_47" target="_blank" rel="noopener">X</a>
+      </span>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>
