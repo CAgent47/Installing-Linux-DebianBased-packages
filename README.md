@@ -29,6 +29,7 @@ Built for people who set up a new machine often and are tired of looking up inst
 - 🔐 **One-time sudo prompt** — enter your password once, the script keeps your session alive in the background instead of asking every step
 - ⏳ **Live spinner & progress feedback** — animated spinner and progress dots so you always know something's happening, not frozen
 - 🎨 **Fully redesigned terminal UI** — boxed banner, color-coded sections, cleaner status messages
+AI-assisted UI/Documentation. Core architecture and project logic designed and implemented by the author.
 - 🧹 **Automatic post-install cleanup** — orphaned packages and caches removed automatically per package manager
 
 ---
