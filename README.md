@@ -133,6 +133,7 @@ OmniPKG asks for your sudo password once and keeps the session alive for the dur
 Issues and pull requests are welcome — especially additions of new package managers or corrections to package names that differ across distros.
 
 ---
+**Created Guid HTML File With Help AI**
 
 ## 📜 License
 
