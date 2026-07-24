@@ -154,4 +154,4 @@ Distributed under the **MIT License**. See `LICENSE` for details.
 
 ---
 
-[banner](banner.png)
+![banner](banner.png)
