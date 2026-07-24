@@ -1,14 +1,14 @@
 <div align="center">
 
-# 🐧 OmniPKG (V1.7) — Universal Package Bootstrapper
+# 🐧 OmniPKG — Universal Package Bootstrapper
 
-**One script. Any Debian-based distro. Zero manual package hunting.**
+**One script. Any distro. Any package manager. Zero manual hunting.**
 
-![Version](https://img.shields.io/badge/version-v1.7-blue)
+![Version](https://img.shields.io/badge/version-v2.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Shell](https://img.shields.io/badge/shell-bash-1f425f)
 ![Python](https://img.shields.io/badge/python-3-yellow)
-![Platform](https://img.shields.io/badge/platform-Linux-orange)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-orange)
 
 </div>
 
@@ -16,52 +16,53 @@
 
 ## 📖 About
 
-**OmniPKG** is a smart, interactive package bootstrapper for Debian-based Linux distributions. Instead of manually installing dependencies one by one, OmniPKG detects your system, checks a simple JSON config for the packages you need, and installs everything for you — with colorful, readable output at every step.
+**OmniPKG** is a smart, cross-platform package bootstrapper. Point it at any system — Debian, Fedora, Arch, macOS, even Windows — and it detects the right package manager, updates your system, installs your package list, and cleans up after itself. No more remembering whether it's `apt`, `dnf`, `pacman`, `brew`, or `winget`.
 
-Built for people who are tired of typing `sudo apt install` fifteen times in a row.
+Built for people who set up a new machine often and are tired of looking up install commands every single time.
 
 ---
 
-## ✨ Features
+## ✨ What's New in v2.0
 
-- 🔍 **Auto-detection** of installed vs missing packages before touching anything
-- 📦 **JSON-driven configuration** — edit `core/packages.json` to control exactly what gets installed
-- 🎨 **Colorful, human-friendly terminal output** (success / warning / error states clearly marked)
-- ✅ **Interactive confirmation** before any install runs — nothing happens silently
-- 🧹 **Automatic cleanup** after installation (cache/temp files removed via `cleanPKG.py`)
-- 🔄 **Self-updating system check** — runs a full system update before installing anything
-- 🛡️ **Safe by design** — uses `set -euo pipefail`, checks before installing, never force-installs blindly
+- 🗂️ **Unified config file** — package lists and package-manager commands now live in a single `packages.json`, no more juggling two separate files
+- 🌍 **Massive package manager coverage** — `apt`, `dnf`, `yum`, `pacman`, `zypper`, `apk`, `xbps`, `eopkg`, `emerge`, `nix`, `guix`, `pkg`, `brew`, `flatpak`, `snap`, `winget`, `choco`, `scoop`, `pkgin`, `opkg`, `swupd`, `urpmi`, `tdnf` — 22 package managers out of the box
+- 🔐 **One-time sudo prompt** — enter your password once, the script keeps your session alive in the background instead of asking every step
+- ⏳ **Live spinner & progress feedback** — animated spinner and progress dots so you always know something's happening, not frozen
+- 🎨 **Fully redesigned terminal UI** — boxed banner, color-coded sections, cleaner status messages
+- 🧹 **Automatic post-install cleanup** — orphaned packages and caches removed automatically per package manager
 
 ---
 
 ## ⚙️ How It Works
 
 ```
-┌──────────────────────┐
-│   omnipkg.sh start   │
-└──────────┬───────────┘
-           │
-           ▼
-   core/createJson.py      → ensures packages.json exists
-           │
-           ▼
-   core/updatePKG.py       → runs system update (apt update && full-upgrade)
-           │
-           ▼
-   installer() → jq        → ensures jq is available (auto-installed if missing)
-           │
-           ▼
-   core/detectPKG.py       → reads packages.json, returns the package list
-           │
-           ▼
-   [ Confirmation prompt ] → y/n before continuing
-           │
-           ▼
-   installer() per package → installs each missing package individually
-           │
-           ▼
-   core/cleanPKG.py        → cleans up after installation
+┌───────────────────────┐
+│   omnipkg.sh start     │
+└───────────┬─────────────┘
+            │
+            ▼
+   Prompt for sudo once → keep-alive loop started in background
+            │
+            ▼
+   core/updatePKG.py      → detects your package manager, returns the update command
+            │
+            ▼
+   [ System updated with spinner feedback ]
+            │
+            ▼
+   core/installPKG.py     → returns the install command for your detected package manager
+            │
+            ▼
+   [ Packages installed with live progress ]
+            │
+            ▼
+   core/cleanPKG.py       → returns the cleanup command for your package manager
+            │
+            ▼
+   [ System cleaned, sudo session closed ]
 ```
+
+Every package manager's `update`, `install`, and `clean` commands are defined once in `packages.json` — the Python helpers just look up the right block for your system and hand the shell script a ready-to-run command.
 
 ---
 
@@ -74,13 +75,7 @@ chmod +x omnipkg.sh
 ./omnipkg.sh
 ```
 
-That's it. The script will:
-1. Show the banner and detect your system
-2. Make sure `packages.json` exists (creates a default one if it's missing)
-3. Update your system
-4. Show you exactly which packages it's about to install
-5. Ask for confirmation (`y`/`n`)
-6. Install everything, then clean up
+You'll be asked for your sudo password once at the start — after that, the whole process runs unattended through update → install → cleanup.
 
 ---
 
@@ -90,12 +85,10 @@ That's it. The script will:
 OmniPKG/
 ├── omnipkg.sh              # main entry point
 ├── core/
-│   ├── packages.json       # your customizable package list
-│   ├── createJson.py       # creates packages.json if missing
-│   ├── updatePKG.py        # generates the system-update command
-│   ├── installPKG.py       # generates the correct install command per distro
-│   ├── detectPKG.py        # reads and returns the package list
-│   └── cleanPKG.py         # generates the post-install cleanup command
+│   ├── packages.json       # package manager commands + package list, all in one place
+│   ├── updatePKG.py        # detects package manager, returns the update command
+│   ├── installPKG.py       # returns the install command for the detected package manager
+│   └── cleanPKG.py         # returns the cleanup command for the detected package manager
 └── README.md
 ```
 
@@ -107,32 +100,36 @@ OmniPKG/
 |---|---|
 | Bash | any modern version |
 | Python 3 | used by the `core/` scripts |
-| `jq` | auto-installed by the script if missing |
-| A Debian-based distro | Debian, Ubuntu, Pop!_OS, and derivatives |
+| sudo access | needed for system-level package installs |
+| A supported package manager | see the list above — 22 supported |
 
 ---
 
 ## 📝 Customizing Packages
 
-Open `core/packages.json` and edit the package list to whatever you need:
+Open `core/packages.json` and edit the `install` line for your package manager. Each package manager has its own block with `update`, `install`, and `clean` commands:
 
 ```json
-{
-    "Packages": [
-        "curl",
-        "git",
-        "btop"
-    ]
+"apt": {
+    "update": "sudo apt update && sudo apt full-upgrade -y",
+    "install": "sudo apt install -y curl git btop",
+    "clean": "sudo apt autoremove -y && sudo apt clean"
 }
 ```
 
-Save it, run `./omnipkg.sh` again — done.
+Add or remove package names from the `install` line for your relevant package manager, save, and run `./omnipkg.sh` again.
+
+---
+
+## ⚠️ Security Note
+
+OmniPKG asks for your sudo password once and keeps the session alive for the duration of the script instead of asking repeatedly. This is meant for convenience on machines you control — always review scripts before running them with elevated privileges.
 
 ---
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome. If a package fails to install on your distro, check `core/packages.json` and make sure the package name matches your distro's package manager naming convention.
+Issues and pull requests are welcome — especially additions of new package managers or corrections to package names that differ across distros.
 
 ---
 
@@ -145,6 +142,6 @@ Distributed under the **MIT License**. See `LICENSE` for details.
 <div align="center">
 
 **Author:** CAgent_47
-![GitHub](https://github.com/CAgent47) · ![LinkedIn](https://www.linkedin.com/in/mohammad-shaygan-2a96a8387) · ![X](https://x.com/CAgent_47)
+[GitHub](https://github.com/CAgent47) · [LinkedIn](https://www.linkedin.com/in/mohammad-shaygan-2a96a8387) · [X](https://x.com/CAgent_47)
 
 </div>
