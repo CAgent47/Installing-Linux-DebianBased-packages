@@ -8,177 +8,173 @@ GREEN=$(tput setaf 2)
 YELLOW=$(tput setaf 3)
 BLUE=$(tput setaf 4)
 CYAN=$(tput setaf 6)
+MAGENTA=$(tput setaf 5)
 BOLD=$(tput bold)
 RESET=$(tput sgr0)
 BPurple='\033[1;35m'
 BGreen='\033[1;32m'
 Yellow='\033[0;33m'
 BRed='\033[1;31m'
+BCyan='\033[1;36m'
+BWhite='\033[1;37m'
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Simple installer function - WITHOUT set -e
-installer() {
-    local pkg="$1"
-    
-    # Check if already installed
-    if command -v "$pkg" &> /dev/null; then
-        echo -e "${Yellow}[ WARNING ]${RESET} $pkg is already installed."
-        return 0
-    fi
-    
-    echo -e "${BGreen}[ Install ]${RESET} Installing $pkg ..."
-    
-    # Get install command from Python
-    local install_cmd
-    install_cmd=$(python3 "$SCRIPT_DIR/core/installPKG.py" "$pkg" 2>/dev/null)
-    
-    if [[ -z "$install_cmd" ]]; then
-        echo -e "${BRed}[ ERROR ]${RESET} No install command found for $pkg"
-        return 1
-    fi
-    
-    echo -e "${CYAN}[ DEBUG ]${RESET} Running: $install_cmd"
-    
-    # Execute the command DIRECTLY
-    eval "$install_cmd"
-    local exit_code=$?
-    
-    if [[ $exit_code -eq 0 ]]; then
-        echo -e "${BGreen}[ SUCCESS ]${RESET} $pkg installed successfully!"
-        return 0
-    else
-        echo -e "${BRed}[ ERROR ]${RESET} Failed to install $pkg (exit: $exit_code)"
-        return 1
-    fi
+# Get sudo password once
+echo -e "${CYAN} Please enter your sudo password:${RESET}"
+read -s -p "Password: " SUDO_PASS
+echo ""
+echo ""
+
+# Function to run sudo commands with cached password
+sudo_cmd() {
+    echo "$SUDO_PASS" | sudo -S "$@" 2>/dev/null
+}
+export -f sudo_cmd
+export SUDO_PASS
+
+# Keep sudo alive in background
+(while true; do echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; sleep 100; done) &
+SUDO_KEEPALIVE_PID=$!
+
+# Spinner function
+spinner() {
+    local pid=$1
+    local msg=$2
+    local spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) % 10 ))
+        printf "\r  ${CYAN}${spin:$i:1}${RESET} ${BWhite}$msg${RESET}"
+        sleep 0.1
+    done
+    printf "\r  ${BGreen}✓${RESET} ${BWhite}$msg${RESET}\n"
 }
 
-# Header
-echo "${CYAN}============================================"
-echo "  ██████╗ ███╗   ███╗███╗   ██╗██╗██████╗ ██╗  ██╗ ██████╗ "
-echo "  ██╔═══██╗████╗ ████║████╗  ██║██║██╔══██╗██║ ██╔╝██╔════╝ "
-echo "  ██║   ██║██╔████╔██║██╔██╗ ██║██║██████╔╝█████╔╝ ██║  ███╗"
-echo "  ██║   ██║██║╚██╔╝██║██║╚██╗██║██║██╔═══╝ ██╔═██╗ ██║   ██║"
-echo "  ╚██████╔╝██║ ╚═╝ ██║██║ ╚████║██║██║     ██║  ██╗╚██████╔╝"
-echo "   ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝ "
-echo "============================================"
-echo "${GREEN}          Universal Package Bootstrapper     ${RESET}"
-echo "${YELLOW}                  v1.7                       ${RESET}"
-echo "============================================"
-echo "  ${BLUE}🐧  Author   :${RESET} CAgent_47"
-echo "  ${BLUE}📦  License  :${RESET} MIT                          "
-echo "  ${BLUE}🌐  GitHub   :${RESET} github.com/CAgent47"
-echo "============================================"
+# Progress bar function
+show_progress() {
+    local current=$1
+    local total=$2
+    local width=50
+    local percent=$((current * 100 / total))
+    local filled=$((percent * width / 100))
+    local empty=$((width - filled))
+    
+    printf "\r  ${CYAN}[${RESET}"
+    printf "%${filled}s" | tr ' ' '█'
+    printf "%${empty}s" | tr ' ' '░'
+    printf "${CYAN}]${RESET} ${BWhite}%3d%%${RESET}" "$percent"
+}
+
+# Animated header
+echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${CYAN}║${RESET}                                                                      "
+echo -e "${CYAN}║${RESET}  ${BWHITE}██████╗ ███╗   ███╗███╗   ██╗██╗██████╗ ██╗  ██╗ ██████╗ "
+echo -e "${CYAN}║${RESET}  ${BWHITE}██╔═══██╗████╗ ████║████╗  ██║██║██╔══██╗██║ ██╔╝██╔════╝ "
+echo -e "${CYAN}║${RESET}  ${BWHITE}██║   ██║██╔████╔██║██╔██╗ ██║██║██████╔╝█████╔╝ ██║  ███╗"
+echo -e "${CYAN}║${RESET}  ${BWHITE}██║   ██║██║╚██╔╝██║██║╚██╗██║██║██╔═══╝ ██╔═██╗ ██║   ██║"
+echo -e "${CYAN}║${RESET}  ${BWHITE}╚██████╔╝██║ ╚═╝ ██║██║ ╚████║██║██║     ██║  ██╗╚██████╔╝"
+echo -e "${CYAN}║${RESET}  ${BWHITE} ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝"
+echo -e "${CYAN}║${RESET}                                                                      "
+echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
+echo -e "${CYAN}║${RESET}  ${GREEN}🌟 Universal Package Bootstrapper${RESET}                   "
+echo -e "${CYAN}║${RESET}  ${YELLOW}📌 v2.0${RESET}                                             "
+echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
+echo -e "${CYAN}║${RESET}  ${BLUE}🐧  Author   :${RESET} CAgent_47                              "
+echo -e "${CYAN}║${RESET}  ${BLUE}📦  License  :${RESET} MIT                                   "
+echo -e "${CYAN}║${RESET}  ${BLUE}🌐  GitHub   :${RESET} github.com/CAgent47                   "
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
-echo "  ${GREEN}[ INFO ]${RESET} Starting OmniPKG Package Installer..."
-echo "  ${GREEN}[ INFO ]${RESET} Detecting your system and package manager..."
-echo "${RESET}"
-
-sleep 2
-
-# Check and create JSON files
-echo "============================================"
-echo "${GREEN}[ INFO ]${RESET} Checking JSON files..."
-python3 "$SCRIPT_DIR/core/createJson.py"
-if [[ $? -ne 0 ]]; then
-    echo -e "${BRed}[ ERROR ]${RESET} Failed to create JSON files"
-    exit 1
-fi
-echo -e "${GREEN}[ OK ]${RESET} JSON files created/updated successfully"
 
 # Update system
-echo "============================================"
-echo -e "${BPurple}[ UPDATE ]${RESET} Updating your system....."
+echo -e "${BCyan}▶  Updating system...${RESET}"
 update_cmd=$(python3 "$SCRIPT_DIR/core/updatePKG.py" 2>/dev/null)
 if [[ -n "$update_cmd" ]]; then
-    echo -e "${CYAN}[ DEBUG ]${RESET} Running: $update_cmd"
-    eval "$update_cmd"
-    if [[ $? -ne 0 ]]; then
-        echo -e "${YELLOW}[ WARNING ]${RESET} System update failed, continuing..."
-    fi
+    # Remove sudo from command since well use our function
+    update_cmd_clean=$(echo "$update_cmd" | sed 's/sudo //g')
+    {
+        echo "$SUDO_PASS" | sudo -S bash -c "$update_cmd_clean" 2>/dev/null
+    } &
+    spinner $! "Updating system packages..."
+    echo -e "  ${BGreen}✓${RESET} System updated successfully\n"
 else
-    echo -e "${YELLOW}[ WARNING ]${RESET} No update command found"
+    echo -e "  ${YELLOW}⚠${RESET} No update command found\n"
 fi
 
-# Install jq first
-echo "============================================"
-echo -e "${BGreen}[ Install ]${RESET} Checking Jq...."
-installer jq
-if [[ $? -ne 0 ]]; then
-    echo -e "${BRed}[ ERROR ]${RESET} Failed to install jq, which is required"
+# Install packages
+echo -e "${BCyan}▶  Installing packages...${RESET}"
+install_cmd=$(python3 "$SCRIPT_DIR/core/installPKG.py" 2>/dev/null)
+
+if [[ -z "$install_cmd" ]]; then
+    echo -e "  ${BRed}✗${RESET} ERROR: No install command found"
+    kill $SUDO_KEEPALIVE_PID 2>/dev/null
     exit 1
 fi
 
-# Detect packages to install
-echo "============================================"
-echo -e "${BGreen}[ Install ]${RESET} Detecting Packages"
+echo -e "  ${YELLOW}→${RESET} ${BWhite}$install_cmd${RESET}\n"
 
-# Get packages list
-mapfile -t Packages < <(python3 "$SCRIPT_DIR/core/detectPKG.py" 2>/dev/null)
-if [[ $? -ne 0 ]] || [[ ${#Packages[@]} -eq 0 ]]; then
-    echo -e "${YELLOW}[ INFO ]${RESET} No packages to install or detection failed"
-    exit 0
-fi
+# Clean sudo from command
+install_cmd_clean=$(echo "$install_cmd" | sed 's/sudo //g')
 
-echo " "
-echo -e "${Yellow}[ WARNING ]${RESET} The following packages will be installed:"
-for showPKG in "${Packages[@]}"; do
-    echo -e "  ${CYAN}•${RESET} $showPKG"
-done
+# Execute with progress
+{
+    echo "$SUDO_PASS" | sudo -S bash -c "$install_cmd_clean" 2>&1
+} &
 
-echo " "
-echo -e "${YELLOW}Do you want to install these packages? (y/n)${RESET}"
-read -r InstallREQ
+INSTALL_PID=$!
 
-if [[ "$InstallREQ" =~ ^[Yy]$ ]]; then
-    echo -e "${BGreen}[ OK ]${RESET} Installing Packages. Please wait..."
-    echo ""
-    
-    failed_packages=()
-    success_packages=()
-    
-    for package in "${Packages[@]}"; do
-        if installer "$package"; then
-            success_packages+=("$package")
-        else
-            failed_packages+=("$package")
-        fi
-        echo "----------------------------------------"
+# Show simple progress dots
+echo -n "  Installing"
+while kill -0 $INSTALL_PID 2>/dev/null; do
+    for dot in "." ".." "..."; do
+        echo -ne "\r  Installing$dot"
+        sleep 0.5
     done
-    
-    # Show installation summary
-    echo "============================================"
-    echo -e "${BGreen}[ SUMMARY ]${RESET} Installation complete"
-    echo -e "${GREEN}[ SUCCESS ]${RESET} Installed: ${#success_packages[@]} packages"
-    if [[ ${#success_packages[@]} -gt 0 ]]; then
-        for pkg in "${success_packages[@]}"; do
-            echo -e "  ${GREEN}✓${RESET} $pkg"
-        done
-    fi
-    
-    if [[ ${#failed_packages[@]} -gt 0 ]]; then
-        echo -e "${BRed}[ ERROR ]${RESET} Failed to install: ${#failed_packages[@]} packages"
-        for pkg in "${failed_packages[@]}"; do
-            echo -e "  ${BRed}✗${RESET} $pkg"
-        done
-    fi
-    
-    # Clean up
-    echo "============================================"
-    echo -e "${BGreen}[ CLEAN ]${RESET} Cleaning up..."
-    clean_cmd=$(python3 "$SCRIPT_DIR/core/cleanPKG.py" 2>/dev/null)
-    if [[ -n "$clean_cmd" ]]; then
-        echo -e "${CYAN}[ DEBUG ]${RESET} Running: $clean_cmd"
-        eval "$clean_cmd"
-        if [[ $? -ne 0 ]]; then
-            echo -e "${YELLOW}[ WARNING ]${RESET} Cleanup failed"
-        fi
-    fi
-    
+done
+echo -e "\r  ${BGreen}✓${RESET} Installation completed"
+
+# Wait for actual exit status
+wait $INSTALL_PID
+INSTALL_STATUS=$?
+
+if [[ $INSTALL_STATUS -eq 0 ]]; then
+    echo -e "\n  ${BGreen}✓${RESET} All packages installed successfully!\n"
 else
-    echo -e "${YELLOW}[ INFO ]${RESET} Edit packages in core/packages.json"
+    echo -e "\n  ${BRed}✗${RESET} Installation failed\n"
+    kill $SUDO_KEEPALIVE_PID 2>/dev/null
+    exit 1
 fi
 
-echo "============================================"
-echo -e "${GREEN}[ DONE ]${RESET} Script finished!"
+# Clean system
+echo -e "${BCyan}▶  Cleaning up...${RESET}"
+clean_cmd=$(python3 "$SCRIPT_DIR/core/cleanPKG.py" 2>/dev/null)
+if [[ -n "$clean_cmd" ]]; then
+    clean_cmd_clean=$(echo "$clean_cmd" | sed 's/sudo //g')
+    {
+        echo "$SUDO_PASS" | sudo -S bash -c "$clean_cmd_clean" 2>/dev/null
+    } &
+    spinner $! "Cleaning system..."
+    echo -e "  ${BGreen}✓${RESET} System cleaned successfully\n"
+else
+    echo -e "  ${YELLOW}⚠${RESET} No clean command found\n"
+fi
+
+# Kill sudo keepalive
+kill $SUDO_KEEPALIVE_PID 2>/dev/null
+
+# Final message
+echo ""
+echo -e "${MAGENTA}╔══════════════════════════════════════════════════════════════╗${RESET}"
+echo -e "${MAGENTA}║${RESET}                                                                     "
+echo -e "${MAGENTA}║${RESET}  ${BWHITE}${RESET} ${GREEN}All tasks completed successfully!${RESET} "            
+echo -e "${MAGENTA}║${RESET}                                                                      "
+echo -e "${MAGENTA}║${RESET}  ${CYAN}${RESET} ${BWHITE}Your system is now ready to use!${RESET}"
+echo -e "${MAGENTA}║${RESET}                                                                "
+echo -e "${MAGENTA}╚══════════════════════════════════════════════════════════════╝${RESET}"
+
+echo ""
+echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "${BGreen}    OmniPKG v2.0 - Made with   by CAgent_47${RESET}"
+echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""

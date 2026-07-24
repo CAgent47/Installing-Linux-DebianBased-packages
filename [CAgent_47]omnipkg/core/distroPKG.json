@@ -8,7 +8,7 @@
     },
     "apt": {
         "update": "sudo apt update && sudo apt full-upgrade -y",
-        "install": "sudo apt install -y python3-full curl git openssh-client dos2unix ipython3 libnotify-bin unrar wget python3-pip lolcat fortune cowsay btop",
+        "install": "sudo apt install -y python3-full curl git openssh-client dos2unix ipython3 libnotify-bin wget python3-pip lolcat fortune cowsay btop",
         "clean": "sudo apt autoremove -y && sudo apt clean"
     },
     "dnf": {
