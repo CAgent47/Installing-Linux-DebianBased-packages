@@ -31,7 +31,7 @@ Built for people who set up a new machine often and are tired of looking up inst
 - 🎨 **Fully redesigned terminal UI** — boxed banner, color-coded sections, cleaner status messages
 AI-assisted UI/Documentation. Core architecture and project logic designed and implemented by the author.
 - 🧹 **Automatic post-install cleanup** — orphaned packages and caches removed automatically per package manager
-- 🐋 **Docker image creator for safe run script comming soon...**
+- 🐋 **Added Docker image creator for safe run script**
 
 ---
 
