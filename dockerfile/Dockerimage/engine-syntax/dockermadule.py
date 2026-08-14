@@ -11,8 +11,9 @@ def detectSyntax(list):
             return syntax
 
 def createJsonFile(file, list):
-    with open(file, 'w') as CJson:
-        json.dump(list, CJson, indent=4)
+    if not os.path.exists('engine-syntax/dockerinstall.json'):
+        with open(file, 'w') as CJson:
+            json.dump(list, CJson, indent=4)
 
 def getCommand(manager, action):
     mode = "root" if os.geteuid() == 0 else "sudo"
