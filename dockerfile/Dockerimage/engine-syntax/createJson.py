@@ -1,3 +1,37 @@
 import dockermadule
 
-dockermadule.createJsonFile()
+dbconmmand = {
+    "Author INFO": {
+        "project": "Docker Installer",
+        "author": "CAgent_47",
+        "GitHub": "github.com/CAgent47",
+        "LinkedIn": "linkedin.com/in/mohammad-shaygan-2a96a8387",
+        "X": "x.com/CAgent_47"
+    },
+    "apt": {
+        "sudo": {
+            "autoremove": "sudo apt remove $(dpkg --get-selections docker.io docker-compose docker-doc docker-buildx podman-docker containerd runc 2>/dev/null | cut -f1)",
+            "SetupDockerRepository": "sudo apt update\nsudo apt install -y ca-certificates curl\nsudo install -m 0755 -d /etc/apt/keyrings\nsudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc\nsudo chmod a+r /etc/apt/keyrings/docker.asc\nsudo tee /etc/apt/sources.list.d/docker.sources <<EOF\nTypes: deb\nURIs: https://download.docker.com/linux/debian\nSuites: $(. /etc/os-release && echo \"$VERSION_CODENAME\")\nComponents: stable\nArchitectures: $(dpkg --print-architecture)\nSigned-By: /etc/apt/keyrings/docker.asc\nEOF\nsudo apt update",
+            "Install": "sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+        },
+        "root": {
+            "autoremove": "apt remove $(dpkg --get-selections docker.io docker-compose docker-doc docker-buildx podman-docker containerd runc 2>/dev/null | cut -f1)",
+            "SetupDockerRepository": "apt update\napt install -y ca-certificates curl\ninstall -m 0755 -d /etc/apt/keyrings\ncurl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc\nchmod a+r /etc/apt/keyrings/docker.asc\ntee /etc/apt/sources.list.d/docker.sources <<EOF\nTypes: deb\nURIs: https://download.docker.com/linux/debian\nSuites: $(. /etc/os-release && echo \"$VERSION_CODENAME\")\nComponents: stable\nArchitectures: $(dpkg --print-architecture)\nSigned-By: /etc/apt/keyrings/docker.asc\nEOF\napt update",
+            "Install": "apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+        }
+    },
+    "dnf": {
+        "sudo": {
+            "autoremove": "sudo dnf remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine podman runc",
+            "SetupDockerRepository": "sudo dnf -y install dnf-plugins-core\nsudo dnf config-manager --add-repo https://download.docker.com/linux/$(. /etc/os-release && echo \"$ID\")/docker-ce.repo",
+            "Install": "sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+        },
+        "root": {
+            "autoremove": "dnf remove -y docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine podman runc",
+            "SetupDockerRepository": "dnf -y install dnf-plugins-core\ndnf config-manager --add-repo https://download.docker.com/linux/$(. /etc/os-release && echo \"$ID\")/docker-ce.repo",
+            "Install": "dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+        }
+    }
+}
+
+dockermadule.createJsonFile('engine-syntax/dockerinstall.json', dbconmmand)
