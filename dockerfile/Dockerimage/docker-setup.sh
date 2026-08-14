@@ -1,5 +1,7 @@
 dockerInstaller() {
     if command -v docker.io &> /dev/null 2>&1; then
-        echo "TMP"
+        eval $(python3 engine-syntax/autoremove.py)
     fi
+
+    
 }
