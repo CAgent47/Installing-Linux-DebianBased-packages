@@ -1,0 +1,3 @@
+import dockermadule
+
+dockermadule.createJsonFile()
