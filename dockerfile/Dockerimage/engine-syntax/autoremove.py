@@ -1,15 +1,7 @@
-import json
-import shutil
+import dockermadule
 
-def readJsonFile(file):
-    with open(file, 'r') as ReadJson:
-        return json.load(ReadJson)
+SyntaxInstall = dockermadule.readJsonFile('engine-syntax/dockerinstall.json')
 
-SyntaxInstall = readJsonFile('dockerinstall.json')
+DetectSyntax = dockermadule.detectSyntax(SyntaxInstall)
 
-for index, syntax in SyntaxInstall.items():
-    if shutil.which(index):
-        DetectSyntax = syntax
-        break
-
-print(DetectSyntax["sudo"]["autoremove"])
+print(dockermadule.getCommand(DetectSyntax, "autoremove"))
