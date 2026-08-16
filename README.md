@@ -14,7 +14,7 @@
 
 ---
 
-**Fixing Project... ( Prerequisite installation and BSD Config )**
+**New Version Comming Soon**
 
 
 ## 📖 About
