@@ -81,7 +81,7 @@ echo -e "${CYAN}║${RESET}  ${BWHITE} ╚═════╝ ╚═╝     ╚�
 echo -e "${CYAN}║${RESET}                                                                      "
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  ${GREEN}🌟 Universal Package Bootstrapper${RESET}                   "
-echo -e "${CYAN}║${RESET}  ${YELLOW}📌 v2.0${RESET}                                             "
+echo -e "${CYAN}║${RESET}  ${YELLOW}📌 v2.4.0${RESET}                                             "
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  ${BLUE}🐧  Author   :${RESET} CAgent_47                              "
 echo -e "${CYAN}║${RESET}  ${BLUE}📦  License  :${RESET} MIT                                   "
