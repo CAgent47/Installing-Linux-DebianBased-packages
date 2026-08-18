@@ -17,8 +17,6 @@ Yellow='\033[0;33m'
 BRed='\033[1;31m'
 BCyan='\033[1;36m'
 BWhite='\033[1;37m'
-# TODO: fix BSD bootstraper
-# TODO: add python git curl installer for prerequisite
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
