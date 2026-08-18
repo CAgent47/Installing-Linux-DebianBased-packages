@@ -25,7 +25,7 @@ Built for people who set up a new machine often and are tired of looking up inst
 
 ---
 
-## ✨ What's New in v2.0
+## ✨ What's New in v2.4.0
 
 - 🗂️ **Unified config file** — package lists and package-manager commands now live in a single `packages.json`, no more juggling two separate files
 - 🌍 **Massive package manager coverage** — `apt`, `dnf`, `yum`, `pacman`, `zypper`, `apk`, `xbps`, `eopkg`, `emerge`, `nix`, `guix`, `pkg`, `brew`, `flatpak`, `snap`, `winget`, `choco`, `scoop`, `pkgin`, `opkg`, `swupd`, `urpmi`, `tdnf` — 22 package managers out of the box
@@ -34,37 +34,45 @@ Built for people who set up a new machine often and are tired of looking up inst
 - 🎨 **Fully redesigned terminal UI** — boxed banner, color-coded sections, cleaner status messages
 AI-assisted UI/Documentation. Core architecture and project logic designed and implemented by the author.
 - 🧹 **Automatic post-install cleanup** — orphaned packages and caches removed automatically per package manager
-- 🐋 **Added Docker image creator for safe run script and markdown guid**
+- 🐋 **Docker automation suite** — complete Docker image creator with `docker-compose.yml`, automated setup script, and dedicated engine-syntax modules for installing, removing, and managing Docker packages and repositories
 
 ---
 
 ## ⚙️ How It Works
 
 ```
-┌───────────────────────┐
-│   omnipkg.sh start     │
-└───────────┬─────────────┘
-            │
-            ▼
-   Prompt for sudo once → keep-alive loop started in background
-            │
-            ▼
-   core/updatePKG.py      → detects your package manager, returns the update command
-            │
-            ▼
-   [ System updated with spinner feedback ]
-            │
-            ▼
-   core/installPKG.py     → returns the install command for your detected package manager
-            │
-            ▼
-   [ Packages installed with live progress ]
-            │
-            ▼
-   core/cleanPKG.py       → returns the cleanup command for your package manager
-            │
-            ▼
-   [ System cleaned, sudo session closed ]
+📂 omniPKG
+[CAgent_47]omniPKG
+├── omnipkg.sh                      # Main entry point script
+├── core/                           # Core functionality modules
+│   ├── packages.json               # Central config: pkg manager commands + package lists
+│   ├── updatePKG.py                # Detects pkg manager & returns update command
+│   ├── installPKG.py               # Returns install command for detected pkg manager
+│   └── cleanPKG.py                 # Returns cleanup command for detected pkg manager
+├── dockerfile/                     # Docker automation suite
+│   └── Dockerimage/                # Docker image build context
+│       ├── dockerimg/              # Mounted core scripts & main script for Docker
+│       │   ├── core/               # (Mirror of main core/ for container usage)
+│       │   │   ├── packages.json
+│       │   │   ├── updatePKG.py
+│       │   │   ├── installPKG.py
+│       │   │   └── cleanPKG.py
+│       │   └── omnipkg.sh          # (Mirror of main script for container)
+│       ├── engine-syntax/          # Docker engine management modules
+│       │   ├── dockerinstall.json  # Docker setup commands per pkg manager
+│       │   ├── dockermadule.py     # Modularized Docker functions (all Python logic)
+│       │   ├── install.py          # Prints Docker pkg install command
+│       │   ├── autoremove.py       # Prints command to remove invalid Docker pkgs
+│       │   ├── setup-Repository.py # Prints repo setup command for Docker
+│       │   ├── createjson.py       # Creates dockerinstall.json if missing
+│       │   └── dchange.py          # Checks Dockerfile changes & prints compose command
+│       ├── docker-compose.yml      # Docker Compose orchestration file
+│       └── docker-setup.sh         # Automation script for Docker prerequisites & setup
+├── Guide/                          # Documentation & user guidance
+│   └── guid.html                   # Simple web page guide for the project
+├── Images/                         # (Optional) Project images/screenshots
+├── README.md                       # Project documentation
+└── SECURITY.md                     # Security policy & notes
 ```
 
 Every package manager's `update`, `install`, and `clean` commands are defined once in `packages.json` — the Python helpers just look up the right block for your system and hand the shell script a ready-to-run command.
