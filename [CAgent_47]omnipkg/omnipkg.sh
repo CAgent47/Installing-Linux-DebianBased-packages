@@ -37,7 +37,7 @@ export -f sudo_cmd
 export SUDO_PASS
 
 # Keep sudo alive in background
-(while true; do echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; sleep 100; done) &
+(while true; do echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; sleep 1000; done) &
 SUDO_KEEPALIVE_PID=$!
 
 # Spinner function
