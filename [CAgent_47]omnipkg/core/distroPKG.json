@@ -62,9 +62,9 @@
         "clean": "guix gc && guix package --delete-generations"
     },
     "pkg": {
-        "update": "sudo pkg update && sudo pkg upgrade -y",
-        "install": "sudo pkg install -y python3 curl git openssh dos2unix ipython libnotify unrar wget py3-pip lolcat fortune cowsay btop",
-        "clean": "sudo pkg autoremove -y && sudo pkg clean -y"
+        "update": "pkg update && sudo pkg upgrade -y",
+        "install": "pkg install -y python3 curl git openssh dos2unix ipython libnotify unrar wget py3-pip lolcat fortune cowsay btop xorg xfce i3 lightdm lightdm-gtk-greeter xfce4-whiskermenu-plugin thunar tumbler dbus",
+        "clean": "pkg autoremove -y && sudo pkg clean -y"
     },
     "brew": {
         "update": "brew update && brew upgrade",
