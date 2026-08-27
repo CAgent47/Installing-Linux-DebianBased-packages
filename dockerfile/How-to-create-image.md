@@ -12,6 +12,7 @@
 
 **change your directory to docker-img folder**
 ```bash
+# اختیاری
 cd dockerfile/Dockerimage/docker-img
 
 # Build Image
