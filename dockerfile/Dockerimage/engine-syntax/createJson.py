@@ -1,4 +1,7 @@
+import os
 import dockermadule
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 dbconmmand = {
     "Author INFO": {
@@ -34,4 +37,4 @@ dbconmmand = {
     }
 }
 
-dockermadule.createJsonFile('engine-syntax/dockerinstall.json', dbconmmand)
+dockermadule.createJsonFile(os.path.join(BASE_DIR, 'dockerinstall.json'), dbconmmand)

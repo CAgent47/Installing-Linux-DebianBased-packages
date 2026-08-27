@@ -1,44 +1,75 @@
 #!/bin/bash
 
-clear
+clear 2>/dev/null
 
 # Colors
-RED=$(tput setaf 1)
-GREEN=$(tput setaf 2)
-YELLOW=$(tput setaf 3)
-BLUE=$(tput setaf 4)
-CYAN=$(tput setaf 6)
-MAGENTA=$(tput setaf 5)
-BOLD=$(tput bold)
-RESET=$(tput sgr0)
-BPurple='\033[1;35m'
-BGreen='\033[1;32m'
-Yellow='\033[0;33m'
-BRed='\033[1;31m'
-BCyan='\033[1;36m'
-BWhite='\033[1;37m'
+if [[ -t 1 ]] && command -v tput >/dev/null 2>&1; then
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+    YELLOW=$(tput setaf 3)
+    BLUE=$(tput setaf 4)
+    CYAN=$(tput setaf 6)
+    MAGENTA=$(tput setaf 5)
+    BOLD=$(tput bold)
+    RESET=$(tput sgr0)
+    BPurple='\033[1;35m'
+    BGreen='\033[1;32m'
+    Yellow='\033[0;33m'
+    BRed='\033[1;31m'
+    BCyan='\033[1;36m'
+    BWhite='\033[1;37m'
+else
+    RED=""
+    GREEN=""
+    YELLOW=""
+    BLUE=""
+    CYAN=""
+    MAGENTA=""
+    BOLD=""
+    RESET=""
+    BPurple=""
+    BGreen=""
+    Yellow=""
+    BRed=""
+    BCyan=""
+    BWhite=""
+fi
 # TODO: fix BSD bootstraper
 # TODO: add python git curl installer for prerequisite
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Get sudo password once
-echo -e "${CYAN} Please enter your sudo password:${RESET}"
-read -s -p "Password: " SUDO_PASS
-echo ""
-echo ""
+SUDO_KEEPALIVE_PID=""
 
-# Function to run sudo commands with cached password
-sudo_cmd() {
-    echo "$SUDO_PASS" | sudo -S "$@" 2>/dev/null
+cleanup() {
+    if [[ -n "$SUDO_KEEPALIVE_PID" ]]; then
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
+    fi
 }
-export -f sudo_cmd
-export SUDO_PASS
+trap cleanup EXIT
 
-# Keep sudo alive in background
-(while true; do echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; sleep 100; done) &
-SUDO_KEEPALIVE_PID=$!
+run_pkg_cmd() {
+    local cmd
+    cmd=$(echo "$1" | sed 's/sudo //g')
+    if [[ $EUID -eq 0 ]]; then
+        bash -c "$cmd"
+    elif [[ "$1" == *"sudo "* ]]; then
+        sudo -n bash -c "$cmd"
+    else
+        bash -c "$cmd"
+    fi
+}
+
+if [[ $EUID -ne 0 ]]; then
+    echo -e "${CYAN} Sudo access is required for system package operations.${RESET}"
+    if ! sudo -v; then
+        echo -e "  ${BRed}✗${RESET} Sudo authentication failed"
+        exit 1
+    fi
+    (while true; do sudo -n true 2>/dev/null; sleep 100; done) &
+    SUDO_KEEPALIVE_PID=$!
+fi
 
 # Spinner function
 spinner() {
@@ -51,31 +82,15 @@ spinner() {
         printf "\r  ${CYAN}${spin:$i:1}${RESET} ${BWhite}$msg${RESET}"
         sleep 0.1
     done
-    printf "\r  ${BGreen}✓${RESET} ${BWhite}$msg${RESET}\n"
-}
-
-# Progress bar function
-show_progress() {
-    local current=$1
-    local total=$2
-    local width=50
-    local percent=$((current * 100 / total))
-    local filled=$((percent * width / 100))
-    local empty=$((width - filled))
-    
-    printf "\r  ${CYAN}[${RESET}"
-    printf "%${filled}s" | tr ' ' '█'
-    printf "%${empty}s" | tr ' ' '░'
-    printf "${CYAN}]${RESET} ${BWhite}%3d%%${RESET}" "$percent"
 }
 
 # Animated header
 echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      "
 echo -e "${CYAN}║${RESET}  ${BWHITE}██████╗ ███╗   ███╗███╗   ██╗██╗██████╗ ██╗  ██╗ ██████╗ "
-echo -e "${CYAN}║${RESET}  ${BWHITE}██╔═══██╗████╗ ████║████╗  ██║██║██╔══██╗██║ ██╔╝██╔════╝ "
-echo -e "${CYAN}║${RESET}  ${BWHITE}██║   ██║██╔████╔██║██╔██╗ ██║██║██████╔╝█████╔╝ ██║  ███╗"
-echo -e "${CYAN}║${RESET}  ${BWHITE}██║   ██║██║╚██╔╝██║██║╚██╗██║██║██╔═══╝ ██╔═██╗ ██║   ██║"
+echo -e "${CYAN}║${RESET}  ${BWHITE}██╔═══██╗████╗ ████║████╗  ██╗██║██╔══██╗██║ ██╔╝██╔════╝ "
+echo -e "${CYAN}║${RESET}  ${BWHITE}██║   ██╗██╔████╔██║██╔██╗ ██║██║██████╔╝█████╔╝ ██║  ███╗"
+echo -e "${CYAN}║${RESET}  ${BWHITE}██║   ██╗██║╚██╔╝██║██║╚██╗██║██║██╔═══╝ ██╔═██╗ ██║   ██║"
 echo -e "${CYAN}║${RESET}  ${BWHITE}╚██████╔╝██║ ╚═╝ ██║██║ ╚████║██║██║     ██║  ██╗╚██████╔╝"
 echo -e "${CYAN}║${RESET}  ${BWHITE} ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝"
 echo -e "${CYAN}║${RESET}                                                                      "
@@ -91,42 +106,42 @@ echo ""
 
 # Update system
 echo -e "${BCyan}▶  Updating system...${RESET}"
-update_cmd=$(python3 "$SCRIPT_DIR/core/updatePKG.py" 2>/dev/null)
+update_cmd=$(python3 "$SCRIPT_DIR/core/updatePKG.py")
 if [[ -n "$update_cmd" ]]; then
-    # Remove sudo from command since well use our function
-    update_cmd_clean=$(echo "$update_cmd" | sed 's/sudo //g')
     {
-        echo "$SUDO_PASS" | sudo -S bash -c "$update_cmd_clean" 2>/dev/null
+        run_pkg_cmd "$update_cmd"
     } &
     spinner $! "Updating system packages..."
-    echo -e "  ${BGreen}✓${RESET} System updated successfully\n"
+    wait $!
+    UPDATE_STATUS=$?
+    if [[ $UPDATE_STATUS -eq 0 ]]; then
+        echo -e "  ${BGreen}✓${RESET} System updated successfully\n"
+    else
+        echo -e "  ${BRed}✗${RESET} System update failed\n"
+        exit 1
+    fi
 else
-    echo -e "  ${YELLOW}⚠${RESET} No update command found\n"
+    echo -e "  ${BRed}✗${RESET} ERROR: No update command found"
+    exit 1
 fi
 
 # Install packages
 echo -e "${BCyan}▶  Installing packages...${RESET}"
-install_cmd=$(python3 "$SCRIPT_DIR/core/installPKG.py" 2>/dev/null)
+install_cmd=$(python3 "$SCRIPT_DIR/core/installPKG.py")
 
 if [[ -z "$install_cmd" ]]; then
     echo -e "  ${BRed}✗${RESET} ERROR: No install command found"
-    kill $SUDO_KEEPALIVE_PID 2>/dev/null
     exit 1
 fi
 
 echo -e "  ${YELLOW}→${RESET} ${BWhite}$install_cmd${RESET}\n"
 
-# Clean sudo from command
-install_cmd_clean=$(echo "$install_cmd" | sed 's/sudo //g')
-
-# Execute with progress
 {
-    echo "$SUDO_PASS" | sudo -S bash -c "$install_cmd_clean" 2>&1
+    run_pkg_cmd "$install_cmd"
 } &
 
 INSTALL_PID=$!
 
-# Show simple progress dots
 echo -n "  Installing"
 while kill -0 $INSTALL_PID 2>/dev/null; do
     for dot in "." ".." "..."; do
@@ -134,36 +149,36 @@ while kill -0 $INSTALL_PID 2>/dev/null; do
         sleep 0.5
     done
 done
-echo -e "\r  ${BGreen}✓${RESET} Installation completed"
+echo -ne "\r                                \r"
 
-# Wait for actual exit status
 wait $INSTALL_PID
 INSTALL_STATUS=$?
 
 if [[ $INSTALL_STATUS -eq 0 ]]; then
-    echo -e "\n  ${BGreen}✓${RESET} All packages installed successfully!\n"
+    echo -e "  ${BGreen}✓${RESET} All packages installed successfully!\n"
 else
-    echo -e "\n  ${BRed}✗${RESET} Installation failed\n"
-    kill $SUDO_KEEPALIVE_PID 2>/dev/null
+    echo -e "  ${BRed}✗${RESET} Installation failed\n"
     exit 1
 fi
 
 # Clean system
 echo -e "${BCyan}▶  Cleaning up...${RESET}"
-clean_cmd=$(python3 "$SCRIPT_DIR/core/cleanPKG.py" 2>/dev/null)
+clean_cmd=$(python3 "$SCRIPT_DIR/core/cleanPKG.py")
 if [[ -n "$clean_cmd" ]]; then
-    clean_cmd_clean=$(echo "$clean_cmd" | sed 's/sudo //g')
     {
-        echo "$SUDO_PASS" | sudo -S bash -c "$clean_cmd_clean" 2>/dev/null
+        run_pkg_cmd "$clean_cmd"
     } &
     spinner $! "Cleaning system..."
-    echo -e "  ${BGreen}✓${RESET} System cleaned successfully\n"
+    wait $!
+    CLEAN_STATUS=$?
+    if [[ $CLEAN_STATUS -eq 0 ]]; then
+        echo -e "  ${BGreen}✓${RESET} System cleaned successfully\n"
+    else
+        echo -e "  ${BRed}✗${RESET} System cleanup failed (continuing)\n"
+    fi
 else
     echo -e "  ${YELLOW}⚠${RESET} No clean command found\n"
 fi
-
-# Kill sudo
-kill $SUDO_KEEPALIVE_PID 2>/dev/null
 
 # Final message
 echo ""

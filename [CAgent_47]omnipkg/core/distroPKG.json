@@ -8,11 +8,11 @@
     },
     "apt": {
         "update": "sudo apt update && sudo apt full-upgrade -y",
-        "install": "sudo apt install -y vim python3-full curl git openssh-client dos2unix ipython3 libnotify-bin wget python3-pip lolcat fortune cowsay btop",
+        "install": "sudo apt install -y python3-full curl git openssh-client dos2unix ipython3 libnotify-bin unrar wget python3-pip lolcat fortune cowsay btop",
         "clean": "sudo apt autoremove -y && sudo apt clean"
     },
     "dnf": {
-        "update": "sudo dnf check-update && sudo dnf upgrade -y",
+        "update": "sudo dnf upgrade -y",
         "install": "sudo dnf install -y python3 curl git openssh-clients dos2unix ipython libnotify unrar wget python3-pip lolcat fortune cowsay btop",
         "clean": "sudo dnf autoremove -y && sudo dnf clean all"
     },
@@ -22,7 +22,7 @@
         "clean": "sudo pacman -Rns $(pacman -Qdtq) --noconfirm 2>/dev/null || true && sudo pacman -Scc --noconfirm"
     },
     "yum": {
-        "update": "sudo yum check-update && sudo yum update -y",
+        "update": "sudo yum update -y",
         "install": "sudo yum install -y python3 curl git openssh-clients dos2unix ipython libnotify unrar wget python3-pip lolcat fortune cowsay btop",
         "clean": "sudo yum autoremove -y && sudo yum clean all"
     },
@@ -38,7 +38,7 @@
     },
     "xbps-install": {
         "update": "sudo xbps-install -S && sudo xbps-install -Su",
-        "install": "sudo xbps-install -y python3 curl git openssh dos2unix ipython libnotify unrar wget python3-pip lolcat fortune cowsay btop",
+        "install": "sudo xbps-install -y python3 curl git openssh dos2unix ipython libnotify unrar wget python-pip lolcat fortune cowsay btop",
         "clean": "sudo xbps-remove -Oo && sudo xbps-remove -y $(xbps-query --list-orphans) 2>/dev/null || true"
     },
     "eopkg": {
@@ -62,39 +62,39 @@
         "clean": "guix gc && guix package --delete-generations"
     },
     "pkg": {
-        "update": "pkg update && sudo pkg upgrade -y",
-        "install": "pkg install -y python3 curl git openssh dos2unix ipython libnotify unrar wget py3-pip lolcat fortune cowsay btop xorg xfce i3 lightdm lightdm-gtk-greeter xfce4-whiskermenu-plugin thunar tumbler dbus",
-        "clean": "pkg autoremove -y && sudo pkg clean -y"
+        "update": "sudo pkg update && sudo pkg upgrade -y",
+        "install": "sudo pkg install -y python3 curl git openssh dos2unix ipython libnotify unrar wget py3-pip lolcat fortune cowsay btop",
+        "clean": "sudo pkg autoremove -y && sudo pkg clean -y"
     },
     "brew": {
         "update": "brew update && brew upgrade",
-        "install": "brew install python curl git openssh dos2unix ipython libnotify unrar wget pip lolcat fortune cowsay btop",
+        "install": "brew install python curl git openssh dos2unix ipython unrar wget lolcat fortune cowsay btop",
         "clean": "brew cleanup --prune=all && brew autoremove"
     },
     "flatpak": {
         "update": "flatpak update -y",
-        "install": "flatpak install -y org.python.Python org.curl.Curl org.git.Git org.openssh.OpenSSH org.dos2unix.Dos2unix org.ipython.IPython org.libnotify.Libnotify org.unrar.Unrar org.wget.Wget org.python.pip org.lolcat.Lolcat org.fortune.Fortune org.cowsay.Cowsay org.btop.Btop",
-        "clean": "flatpak uninstall --unused -y && flatpak repair"
+        "install": "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo",
+        "clean": "flatpak uninstall --unused -y"
     },
     "snap": {
         "update": "sudo snap refresh",
-        "install": "sudo snap install python3 curl git openssh dos2unix ipython libnotify unrar wget pip lolcat fortune cowsay btop",
-        "clean": "sudo snap remove --revision $(snap list --all | awk 'NR>1 {print $1}' | xargs -I {} snap changes {} | grep -E 'Remove.*Done' | awk '{print $2}' | head -1) 2>/dev/null || true && sudo snap set system refresh.retain=2"
+        "install": "echo '[ snap ]: development tools are provided by the native package manager'",
+        "clean": "sudo snap set system refresh.retain=2"
     },
     "winget": {
         "update": "winget upgrade --all",
-        "install": "winget install Python.Python curl.curl Git.Git OpenSSH.OpenSSH dos2unix.dos2unix ipython.ipython libnotify.libnotify unrar.unrar wget.wget pip.pip lolcat.lolcat fortune.fortune cowsay.cowsay btop.btop",
-        "clean": "winget uninstall --all --force 2>/dev/null || true && winget settings --enable clean"
+        "install": "winget install -e --id Python.Python --accept-package-agreements --accept-source-agreements && winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements",
+        "clean": "winget source update"
     },
     "choco": {
         "update": "choco upgrade all -y",
-        "install": "choco install -y python curl git openssh dos2unix ipython libnotify unrar wget pip lolcat fortune cowsay btop",
-        "clean": "choco cleanup -y && choco cache remove -y"
+        "install": "choco install -y python git curl wget unrar",
+        "clean": "echo '[ choco ]: no cleanup command required'"
     },
     "scoop": {
         "update": "scoop update *",
-        "install": "scoop install python curl git openssh dos2unix ipython libnotify unrar wget pip lolcat fortune cowsay btop",
-        "clean": "scoop cleanup --cache --all && scoop cache rm --all"
+        "install": "scoop install python git curl wget",
+        "clean": "scoop cleanup * && scoop cache rm *"
     },
     "pkgin": {
         "update": "sudo pkgin update && sudo pkgin upgrade",
@@ -117,7 +117,7 @@
         "clean": "sudo urpmi --clean && sudo urpme --orphans -a"
     },
     "tdnf": {
-        "update": "sudo tdnf check-update && sudo tdnf upgrade -y",
+        "update": "sudo tdnf upgrade -y",
         "install": "sudo tdnf install -y python3 curl git openssh dos2unix ipython libnotify unrar wget python3-pip lolcat fortune cowsay btop",
         "clean": "sudo tdnf autoremove -y && sudo tdnf clean all"
     }
