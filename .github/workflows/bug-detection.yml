@@ -173,9 +173,6 @@ jobs:
           
           echo "⚠️  Container did not crash (may need manual review)"
 
-  # ================================================================
-  # BUG #2: رمز sudo در environment نشت می‌کند
-  # ================================================================
   bug-2-password-leak:
     name: "🔴 [Bug #2] Sudo Password Environment Leak"
     runs-on: ubuntu-latest
@@ -184,119 +181,64 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: "TEST A: Detect password export in omnipkg.sh"
+      - name: "TEST: Verify no password handling exists in omnipkg.sh"
         run: |
           echo "══════════════════════════════════════════════════"
-          echo "  TEST A: Scanning for password export"
+          echo "  Scanning omnipkg.sh for password handling"
           echo "══════════════════════════════════════════════════"
           echo ""
-          
+
           SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
-          
+
           if [ -z "$SCRIPT" ]; then
             echo "⚠️  omnipkg.sh not found, skipping"
             exit 0
           fi
-          
+
           echo "📄 Scanning: $SCRIPT"
           echo ""
-          
+
           BUGS_FOUND=0
-          
-          # ── Check 1: export SUDO_PASS ──
+
           EXPORT_LINES=$(grep -n "export.*SUDO_PASS" "$SCRIPT" || true)
           if [ -n "$EXPORT_LINES" ]; then
-            echo "❌ FAIL: BUG #2 CONFIRMED"
-            echo ""
-            echo "┌─────────────────────────────────────────────────────┐"
-            echo "│ SECURITY VULNERABILITY: Password Export             │"
-            echo "├─────────────────────────────────────────────────────┤"
-            echo "│ Found:                                              │"
-            echo "$EXPORT_LINES" | sed 's/^/│   /'
-            echo "│                                                     │"
-            echo "│ Impact:                                             │"
-            echo "│   The sudo password is stored as an environment     │"
-            echo "│   variable visible to ALL child processes.          │"
-            echo "│                                                     │"
-            echo "│ Attack Vector:                                      │"
-            echo "│   $ cat /proc/\$(pgrep -f omnipkg)/environ \\          │"
-            echo "│     | tr '\\0' '\\n' | grep SUDO_PASS                 │"
-            echo "│                                                     │"
-            echo "│   Output: SUDO_PASS=<actual_password>               │"
-            echo "│                                                     │"
-            echo "│ Severity: CRITICAL                                  │"
-            echo "└─────────────────────────────────────────────────────┘"
+            echo "❌ FAIL: password exported to environment"
+            echo "$EXPORT_LINES"
             BUGS_FOUND=$((BUGS_FOUND + 1))
-          fi
-          
-          # ── Check 2: Password via echo pipe ──
-          ECHO_PIPE_LINES=$(grep -n 'echo.*SUDO_PASS.*sudo' "$SCRIPT" || true)
-          if [ -n "$ECHO_PIPE_LINES" ]; then
-            echo ""
-            echo "❌ ADDITIONAL ISSUE: Password passed via echo pipe"
-            echo "│ Found:"
-            echo "$ECHO_PIPE_LINES" | head -5 | sed 's/^/│   /'
-            echo "│"
-            echo "│ This makes the password visible in process list"
-            echo "│ during execution (ps aux can capture it)."
-            BUGS_FOUND=$((BUGS_FOUND + 1))
-          fi
-          
-          # ── Check 3: Password stored in variable without cleanup ──
-          if grep -q "unset SUDO_PASS" "$SCRIPT"; then
-            echo "✅ PASS: Password is unset after use"
           else
-            echo ""
-            echo "🟡 WARNING: Password variable never unset after use"
-            echo "   The SUDO_PASS variable remains in memory for the"
-            echo "   entire script duration and is never cleared."
-          fi
-          
-          echo ""
-          echo "──────────────────────────────────────────"
-          echo "Total security issues found: $BUGS_FOUND"
-          echo "──────────────────────────────────────────"
-          
-          if [ $BUGS_FOUND -gt 0 ]; then
-            exit 1
+            echo "✅ PASS: no password export found"
           fi
 
-      - name: "TEST B: Prove password is readable by child processes"
-        run: |
-          echo "══════════════════════════════════════════════════"
-          echo "  TEST B: Runtime proof of password leak"
-          echo "══════════════════════════════════════════════════"
+          ECHO_PIPE_LINES=$(grep -n 'echo.*SUDO_PASS.*sudo' "$SCRIPT" || true)
+          if [ -n "$ECHO_PIPE_LINES" ]; then
+            echo "❌ FAIL: password piped via echo to sudo"
+            echo "$ECHO_PIPE_LINES"
+            BUGS_FOUND=$((BUGS_FOUND + 1))
+          else
+            echo "✅ PASS: no echo-pipe password usage"
+          fi
+
+          PASSVAR_LINES=$(grep -n "SUDO_PASS" "$SCRIPT" || true)
+          if [ -n "$PASSVAR_LINES" ]; then
+            echo "❌ FAIL: SUDO_PASS variable still referenced"
+            echo "$PASSVAR_LINES"
+            BUGS_FOUND=$((BUGS_FOUND + 1))
+          else
+            echo "✅ PASS: no SUDO_PASS variable in script"
+          fi
+
+          if grep -q "read -s" "$SCRIPT"; then
+            echo "🟡 WARNING: script still reads a hidden password into a variable"
+          else
+            echo "✅ PASS: no hidden password read (sudo prompts securely itself)"
+          fi
+
           echo ""
-          
-          # شبیه‌سازی رفتار omnipkg.sh
-          export SUDO_PASS="MySecretPassword123"
-          
-          # یک subprocess فرزند می‌تواند آن را بخواند
-          CHILD_READS=$(bash -c 'echo "$SUDO_PASS"')
-          
-          if [ "$CHILD_READS" == "MySecretPassword123" ]; then
-            echo "❌ FAIL: BUG #2 CONFIRMED (runtime proof)"
-            echo ""
-            echo "┌─────────────────────────────────────────────────────┐"
-            echo "│ PROOF:                                              │"
-            echo "│                                                     │"
-            echo "│ $ export SUDO_PASS=\"MySecretPassword123\"              │"
-            echo "│ $ bash -c 'echo \"\$SUDO_PASS\"'                        │"
-            echo "│ MySecretPassword123                                 │"
-            echo "│                                                     │"
-            echo "│ ANY child process can read the password.            │"
-            echo "│ This includes malicious scripts running under       │"
-            echo "│ the same user account.                              │"
-            echo "│                                                     │"
-            echo "│ Real-world attack:                                  │"
-            echo "│ A malicious .bashrc or background process could     │"
-            echo "│ periodically scan for SUDO_PASS in /proc/*/environ  │"
-            echo "└─────────────────────────────────────────────────────┘"
-            unset SUDO_PASS
+          if [ $BUGS_FOUND -gt 0 ]; then
+            echo "❌ BUG #2 CONFIRMED: $BUGS_FOUND issue(s)"
             exit 1
           fi
-          
-          unset SUDO_PASS
+          echo "✅ BUG #2 FIXED: no password leak patterns present"
 
   # ================================================================
   # BUG #4: دستور winget clean همه برنامه‌ها را حذف می‌کند
@@ -725,9 +667,6 @@ jobs:
             echo "✅ PASS: dchange.py handled missing Dockerfile gracefully"
           fi
 
-  # ================================================================
-  # BUG #11: خطاهای Python کاملاً suppress می‌شوند
-  # ================================================================
   bug-11-error-suppression:
     name: "🟡 [Bug #11] Error Suppression Pattern"
     runs-on: ubuntu-latest
@@ -742,88 +681,63 @@ jobs:
           echo "  TEST A: Scanning for stderr suppression"
           echo "══════════════════════════════════════════════════"
           echo ""
-          
+
           SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
-          
+
           if [ -z "$SCRIPT" ]; then
             echo "⚠️  omnipkg.sh not found"
             exit 0
           fi
-          
-          # پیدا کردن خطوطی که python3 با 2>/dev/null اجرا می‌شوند
-          SUPPRESSED=$(grep -n "python3.*2>/dev/null" "$SCRIPT" || true)
-          
-          if [ -n "$SUPPRESSED" ]; then
-            LINE_COUNT=$(echo "$SUPPRESSED" | wc -l)
-            echo "❌ FAIL: BUG #11 CONFIRMED"
-            echo ""
-            echo "┌─────────────────────────────────────────────────────┐"
-            echo "│ {$LINE_COUNT} Python calls have stderr suppressed"
-            echo "├─────────────────────────────────────────────────────┤"
-            echo "│ Affected lines:"
-            echo "$SUPPRESSED" | sed 's/^/│   /'
-            echo "│                                                     │"
-            echo "│ Impact:                                             │"
-            echo "│   When Python scripts fail (e.g., no package        │"
-            echo "│   manager detected), the actual error message       │"
-            echo "│   is completely hidden from the user.               │"
-            echo "│                                                     │"
-            echo "│   User sees: \"⚠ No update command found\"            │"
-            echo "│   But doesn't know WHY or WHAT failed.              │"
-            echo "│                                                     │"
-            echo "│   The Python error might be:                         │"
-            echo "│   TypeError: 'NoneType' object is not subscriptable │"
-            echo "│   (meaning: no package manager was found)           │"
-            echo "│                                                     │"
-            echo "│ Fix:                                                 │"
-            echo "│   Remove 2>/dev/null and add proper error handling   │"
-            echo "└─────────────────────────────────────────────────────┘"
-            exit 1
-          else
-            echo "✅ PASS: No stderr suppression detected"
-          fi
 
-      - name: "TEST B: Prove Python error is hidden"
+          SUPPRESSED=$(grep -n "python3.*2>/dev/null" "$SCRIPT" || true)
+
+          if [ -n "$SUPPRESSED" ]; then
+            echo "❌ FAIL: BUG #11 CONFIRMED"
+            echo "$SUPPRESSED"
+            exit 1
+          fi
+          echo "✅ PASS: no stderr suppression after python3 calls"
+
+      - name: "TEST B: Verify detection failure produces a visible error"
         run: |
           echo "══════════════════════════════════════════════════"
-          echo "  TEST B: Runtime proof of error hiding"
+          echo "  TEST B: Runtime — PATH stripped of all pkg managers"
           echo "══════════════════════════════════════════════════"
           echo ""
-          
-          # شبیه‌سازی: اسکریپتی که کرش می‌کند
-          cat > /tmp/test_suppression.py << 'EOF'
-          # شبیه‌سازی updatePKG.py وقتی هیچ مدیر بسته‌ای پیدا نشود
-          import shutil, json
-          
-          def loopInDICT(d):
-              for key in d:
-                  if shutil.which(key):
-                      return key
-              return None  # هیچ چیز پیدا نشد
-          
-          data = {"fake_manager": {"update": "fake_cmd"}}
-          result = loopInDICT(data)
-          # این خط کرش می‌کند چون result برابر None است
-          print(data[result]["update"])
-          EOF
-          
-          # بدون suppression
-          echo "▶ Without 2>/dev/null:"
-          python3 /tmp/test_suppression.py 2>&1 | tail -3
-          echo ""
-          
-          # با suppression (همان‌طور که omnipkg.sh انجام می‌دهد)
-          echo "▶ With 2>/dev/null (omnipkg.sh behavior):"
-          OUTPUT=$(python3 /tmp/test_suppression.py 2>/dev/null)
-          echo "Output: '$OUTPUT'  ← EMPTY! Error is completely hidden"
-          echo ""
-          
-          if [ -z "$OUTPUT" ]; then
-            echo "❌ PROOF: Error message is completely invisible to user"
-            echo "   The Python traceback exists but is sent to /dev/null"
-            echo "   User gets zero information about what went wrong."
+
+          SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
+          if [ -z "$SCRIPT" ]; then
+            echo "⚠️  omnipkg.sh not found, skipping"
+            exit 0
+          fi
+          CORE_DIR=$(dirname "$SCRIPT")/core
+
+          if [ ! -f "$CORE_DIR/updatePKG.py" ]; then
+            echo "⚠️  updatePKG.py not found, skipping"
+            exit 0
           fi
 
+          TESTBIN=$(mktemp -d)
+          ln -s "$(command -v python3)" "$TESTBIN/python3"
+
+          set +e
+          OUTPUT=$(cd "$CORE_DIR" && env PATH="$TESTBIN" python3 updatePKG.py 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "Exit code: $EXIT_CODE"
+          echo "Output:"
+          echo "─────────────────────────────────────────"
+          echo "$OUTPUT"
+          echo "─────────────────────────────────────────"
+          echo ""
+
+          if [ $EXIT_CODE -ne 0 ] && [ -n "$OUTPUT" ]; then
+            echo "✅ PASS: failure is reported with a visible error message"
+          else
+            echo "❌ FAIL: failure is silent (empty output or zero exit)"
+            exit 1
+          fi
   # ================================================================
   # BUG #3: پیام‌های موفقیت کاذب (نسخه v2 — باگ تست قبلی رفع شد)
   # ================================================================
