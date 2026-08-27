@@ -14,7 +14,7 @@
 
 ---
 
-**New Version Comming Soon**
+**Adding detect root user or non root user for beter pkgmanager handling**
 
 
 ## 📖 About
