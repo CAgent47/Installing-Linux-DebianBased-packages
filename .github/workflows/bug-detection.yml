@@ -825,7 +825,7 @@ jobs:
           fi
 
   # ================================================================
-  # BONUS: تست تعامل Bug #3 (False Success Message)
+  # BUG #3: پیام‌های موفقیت کاذب (نسخه v2 — باگ تست قبلی رفع شد)
   # ================================================================
   bug-3-false-success:
     name: "🟡 [Bug #3] False Success Messages"
@@ -838,60 +838,97 @@ jobs:
       - name: "TEST: Verify success messages check exit codes"
         run: |
           echo "══════════════════════════════════════════════════"
-          echo "  Testing for false success messages"
+          echo "  Testing for false success messages (v2)"
           echo "══════════════════════════════════════════════════"
           echo ""
-          
+
           SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
-          
+
           if [ -z "$SCRIPT" ]; then
             echo "⚠️  omnipkg.sh not found"
             exit 0
           fi
-          
-          # پیدا کردن الگوی: spinner سپس پیام موفقیت بدون چک exit code
-          ISSUES=0
-          
-          # چک کردن: آیا بعد از spinner برای update، exit code چک می‌شود؟
-          # در omnipkg.sh، بعد از spinner برای update:
-          #   spinner $! "Updating system packages..."
-          #   echo "✓ System updated successfully"  ← بدون چک!
-          
-          # الگوی مشکل‌ساز: echo "✓" بعد از spinner بدون if/wait
-          
-          # شمارش چند بار exit code بعد از spinner چک شده
-          TOTAL_SPINNERS=$(grep -c "spinner \$!" "$SCRIPT" || echo 0)
-          TOTAL_WAIT_CHECKS=$(grep -c "wait.*STATUS" "$SCRIPT" || echo 0)
-          
-          echo "📊 Statistics:"
-          echo "   spinner calls: $TOTAL_SPINNERS"
-          echo "   exit code checks: $TOTAL_WAIT_CHECKS"
+
+          echo "📄 Analyzing: $SCRIPT"
           echo ""
-          
-          if [ "$TOTAL_SPINNERS" -gt "$TOTAL_WAIT_CHECKS" ]; then
-            UNCHECKED=$((TOTAL_SPINNERS - TOTAL_WAIT_CHECKS))
-            echo "❌ FAIL: BUG #3 CONFIRMED"
-            echo ""
-            echo "┌─────────────────────────────────────────────────────┐"
-            echo "│ {$UNCHECKED} spinner(s) don't check exit code"
-            echo "├─────────────────────────────────────────────────────┤"
-            echo "│ The spinner function ALWAYS prints '✓' when the     │"
-            echo "│ background process finishes, regardless of whether  │"
-            echo "│ it succeeded or failed.                             │"
-            echo "│                                                     │"
-            echo "│ Example:                                            │"
-            echo "│   { echo "WRONG_PASS" | sudo -S apt update; } &      │"
-            echo "│   spinner $! "Updating..."                           │"
-            echo "│   # sudo fails → but spinner shows:                  │"
-            echo "│   ✓ Updating...           ← FALSE!                   │"
-            echo "│   ✓ System updated successfully  ← FALSE!            │"
-            echo "│                                                     │"
-            echo "│ Fix: Check \$? after wait, only show ✓ if 0         │"
-            echo "└─────────────────────────────────────────────────────┘"
-            exit 1
-          else
-            echo "✅ PASS: All spinner results are checked"
-          fi
+
+          # تحلیل با Python به‌جای محاسبات bash شکننده
+          python3 - "$SCRIPT" << 'PYEOF'
+          import re
+          import sys
+
+          script_path = sys.argv[1]
+          with open(script_path) as f:
+              lines = f.readlines()
+
+          spinner_calls = []
+          false_successes = []
+
+          for i, line in enumerate(lines):
+              # پیدا کردن فراخوانی spinner (نه تعریف تابع)
+              if re.search(r'\bspinner\s+\$!', line):
+                  spinner_calls.append(i + 1)
+                  # بررسی حداکثر ۵ خط بعدی
+                  for j in range(i + 1, min(i + 6, len(lines))):
+                      nxt = lines[j]
+
+                      # اگر exit code چک شده → این spinner امن است
+                      if (re.search(r'\bwait\b', nxt) or
+                          re.search(r'_STATUS\s*=', nxt) or
+                          re.search(r'\bif\b', nxt)):
+                          break
+
+                      # پیام موفقیت بی‌قید و شرط → باگ!
+                      if '✓' in nxt and 'success' in nxt.lower():
+                          false_successes.append({
+                              'spinner_line': i + 1,
+                              'spinner_text': line.strip(),
+                              'echo_line': j + 1,
+                              'echo_text': nxt.strip(),
+                          })
+                          break
+
+                      # خط خالی → رد شو
+                      if not nxt.strip():
+                          continue
+
+                      break
+
+          print("📊 Static Analysis Results:")
+          print(f"   spinner() calls found:     {len(spinner_calls)}")
+          print(f"   WITHOUT exit-code check:   {len(false_successes)}")
+          print()
+
+          if false_successes:
+              print("❌ FAIL: BUG #3 CONFIRMED")
+              print()
+              print(f"┌{'─'*55}┐")
+              print(f"│ {len(false_successes)} spinner(s) print ✓ WITHOUT exit-code check:")
+              print(f"│{'─'*55}│")
+              for fs in false_successes:
+                  print(f"│ Line {fs['spinner_line']}: {fs['spinner_text'][:46]}")
+                  print(f"│ Line {fs['echo_line']}:   {fs['echo_text'][:46]}")
+                  print(f"│   ↑ Success printed UNCONDITIONALLY")
+                  print(f"│")
+              print(f"│{'─'*55}│")
+              print(f"│ Impact:")
+              print(f"│   Wrong sudo password? Network down?")
+              print(f"│   User STILL sees:")
+              print(f"│   ✓ System updated successfully")
+              print(f"│")
+              print(f"│ Fix (for each spinner call):")
+              print(f"│   spinner $PID \"Working...\"")
+              print(f"│   wait $PID")
+              print(f"│   if [[ $? -ne 0 ]]; then echo \"✗ FAILED\"; exit 1; fi")
+              print(f"└{'─'*55}┘")
+              sys.exit(1)
+          elif spinner_calls:
+              print(f"✅ PASS: All {len(spinner_calls)} spinner results are checked")
+              sys.exit(0)
+          else:
+              print("⚠️  No spinner calls found - nothing to test")
+              sys.exit(0)
+          PYEOF
 
   # ================================================================
   # خلاصه نهایی
