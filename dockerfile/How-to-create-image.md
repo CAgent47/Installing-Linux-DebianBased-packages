@@ -10,8 +10,10 @@
 
 # 2 - Create Docker image
 
-**change your directory dockerfile folder**
+**change your directory to docker-img folder**
 ```bash
+cd dockerfile/Dockerimage/docker-img
+
 # Build Image
 sudo docker build -t omnipkg .
 

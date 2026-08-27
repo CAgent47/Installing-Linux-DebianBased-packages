@@ -27,9 +27,9 @@ Built for people who set up a new machine often and are tired of looking up inst
 
 ## ✨ What's New in v2.4.0
 
-- 🗂️ **Unified config file** — package lists and package-manager commands now live in a single `packages.json`, no more juggling two separate files
+- 🗂️ **Unified config file** — package lists and package-manager commands now live in a single `distroPKG.json`, no more juggling two separate files
 - 🌍 **Massive package manager coverage** — `apt`, `dnf`, `yum`, `pacman`, `zypper`, `apk`, `xbps`, `eopkg`, `emerge`, `nix`, `guix`, `pkg`, `brew`, `flatpak`, `snap`, `winget`, `choco`, `scoop`, `pkgin`, `opkg`, `swupd`, `urpmi`, `tdnf` — 22 package managers out of the box
-- 🔐 **One-time sudo prompt** — enter your password once, the script keeps your session alive in the background instead of asking every step
+- 🔐 **Secure sudo handling** — the script uses standard `sudo -v` session validation instead of storing passwords in variables, and detects root containers automatically
 - ⏳ **Live spinner & progress feedback** — animated spinner and progress dots so you always know something's happening, not frozen
 - 🎨 **Fully redesigned terminal UI** — boxed banner, color-coded sections, cleaner status messages
 AI-assisted UI/Documentation. Core architecture and project logic designed and implemented by the author.
@@ -42,40 +42,46 @@ AI-assisted UI/Documentation. Core architecture and project logic designed and i
 
 ```
 📂 omniPKG
-[CAgent_47]omniPKG
+[CAgent_47]omnipkg
 ├── omnipkg.sh                      # Main entry point script
 ├── core/                           # Core functionality modules
-│   ├── packages.json               # Central config: pkg manager commands + package lists
+│   ├── distroPKG.json              # Central config: pkg manager commands + package lists
+│   ├── omnimadule.py               # Shared helpers (detection, json io)
+│   ├── createJson.py               # Creates distroPKG.json if missing
 │   ├── updatePKG.py                # Detects pkg manager & returns update command
 │   ├── installPKG.py               # Returns install command for detected pkg manager
 │   └── cleanPKG.py                 # Returns cleanup command for detected pkg manager
 ├── dockerfile/                     # Docker automation suite
-│   └── Dockerimage/                # Docker image build context
-│       ├── dockerimg/              # Mounted core scripts & main script for Docker
-│       │   ├── core/               # (Mirror of main core/ for container usage)
-│       │   │   ├── packages.json
-│       │   │   ├── updatePKG.py
-│       │   │   ├── installPKG.py
-│       │   │   └── cleanPKG.py
-│       │   └── omnipkg.sh          # (Mirror of main script for container)
-│       ├── engine-syntax/          # Docker engine management modules
-│       │   ├── dockerinstall.json  # Docker setup commands per pkg manager
-│       │   ├── dockermadule.py     # Modularized Docker functions (all Python logic)
-│       │   ├── install.py          # Prints Docker pkg install command
-│       │   ├── autoremove.py       # Prints command to remove invalid Docker pkgs
-│       │   ├── setup-Repository.py # Prints repo setup command for Docker
-│       │   ├── createjson.py       # Creates dockerinstall.json if missing
-│       │   └── dchange.py          # Checks Dockerfile changes & prints compose command
+│   ├── How-to-create-image.md      # Image build guide
+│   └── Dockerimage/                # Docker automation root
 │       ├── docker-compose.yml      # Docker Compose orchestration file
-│       └── docker-setup.sh         # Automation script for Docker prerequisites & setup
+│       ├── docker-setup.sh         # Automation script for Docker prerequisites & setup
+│       ├── docker-img/             # Docker image build context
+│       │   ├── Dockerfile
+│       │   ├── omnipkg.sh          # (Mirror of main script for container)
+│       │   └── core/               # (Mirror of main core/ for container)
+│       │       ├── distroPKG.json
+│       │       ├── omnimadule.py
+│       │       ├── createJson.py
+│       │       ├── updatePKG.py
+│       │       ├── installPKG.py
+│       │       └── cleanPKG.py
+│       └── engine-syntax/          # Docker engine management modules
+│           ├── dockerinstall.json  # Docker setup commands per pkg manager
+│           ├── dockermadule.py     # Modularized Docker functions (all Python logic)
+│           ├── createJson.py       # Creates dockerinstall.json if missing
+│           ├── install.py          # Prints Docker pkg install command
+│           ├── autoremove.py       # Prints command to remove invalid Docker pkgs
+│           ├── setup-Repostory.py  # Prints repo setup command for Docker
+│           └── dchange.py          # Checks Dockerfile changes & prints compose command
 ├── Guide/                          # Documentation & user guidance
-│   └── guid.html                   # Simple web page guide for the project
+│   └── guide.html                  # Simple web page guide for the project
 ├── Images/                         # (Optional) Project images/screenshots
 ├── README.md                       # Project documentation
 └── SECURITY.md                     # Security policy & notes
 ```
 
-Every package manager's `update`, `install`, and `clean` commands are defined once in `packages.json` — the Python helpers just look up the right block for your system and hand the shell script a ready-to-run command.
+Every package manager's `update`, `install`, and `clean` commands are defined once in `distroPKG.json` — the Python helpers just look up the right block for your system and hand the shell script a ready-to-run command.
 
 ---
 
@@ -98,7 +104,9 @@ You'll be asked for your sudo password once at the start — after that, the who
 OmniPKG/
 ├── omnipkg.sh              # main entry point
 ├── core/
-│   ├── packages.json       # package manager commands + package list, all in one place
+│   ├── distroPKG.json      # package manager commands + package list, all in one place
+│   ├── omnimadule.py       # shared detection & json helpers
+│   ├── createJson.py       # creates distroPKG.json if missing
 │   ├── updatePKG.py        # detects package manager, returns the update command
 │   ├── installPKG.py       # returns the install command for the detected package manager
 │   └── cleanPKG.py         # returns the cleanup command for the detected package manager
@@ -120,7 +128,7 @@ OmniPKG/
 
 ## 📝 Customizing Packages
 
-Open `core/packages.json` and edit the `install` line for your package manager. Each package manager has its own block with `update`, `install`, and `clean` commands:
+Open `core/distroPKG.json` and edit the `install` line for your package manager. Each package manager has its own block with `update`, `install`, and `clean` commands:
 
 ```json
 "apt": {
@@ -134,9 +142,27 @@ Add or remove package names from the `install` line for your relevant package ma
 
 ---
 
+## 🐳 Docker Usage
+
+To build and run the Docker image:
+
+```bash
+cd dockerfile/Dockerimage/docker-img
+sudo docker build -t omnipkg .
+sudo docker run omnipkg
+```
+
+Or use the automated setup script, which installs Docker if missing and brings the container up via docker compose:
+
+```bash
+bash dockerfile/Dockerimage/docker-setup.sh
+```
+
+---
+
 ## ⚠️ Security Note
 
-OmniPKG asks for your sudo password once and keeps the session alive for the duration of the script instead of asking repeatedly. This is meant for convenience on machines you control — always review scripts before running them with elevated privileges.
+OmniPKG uses the standard `sudo -v` mechanism to keep your session alive for the duration of the script instead of storing your password in variables or environment. This is meant for convenience on machines you control — always review scripts before running them with elevated privileges.
 
 ---
 
