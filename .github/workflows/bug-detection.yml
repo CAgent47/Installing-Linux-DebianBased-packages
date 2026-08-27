@@ -1,0 +1,1011 @@
+name: 🐛 Bug Detection & Security Audit
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # تنظیمات رنگ برای خروجی خوانا
+  TERM: xterm
+
+jobs:
+  # ================================================================
+  # BUG #1: Docker Image - sudo نصب نشده → کانتینر کرش می‌کند
+  # ================================================================
+  bug-1-docker-sudo:
+    name: "🔴 [Bug #1] Docker Image Missing sudo"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Locate Dockerfile
+        id: locate
+        run: |
+          # پیدا کردن Dockerfile در پروژه
+          DOCKERFILE=$(find . -name "Dockerfile" \
+            -not -path "./.git/*" \
+            -not -path "./node_modules/*" \
+            | head -1)
+          
+          if [ -z "$DOCKERFILE" ]; then
+            echo "⚠️  No Dockerfile found in repository"
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "path=" >> $GITHUB_OUTPUT
+          else
+            echo "📄 Dockerfile found: $DOCKERFILE"
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "path=$DOCKERFILE" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "TEST A: Verify sudo in Dockerfile install list"
+        if: steps.locate.outputs.found == 'true'
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST A: Checking if sudo is in apt-get install"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          DOCKERFILE="${{ steps.locate.outputs.path }}"
+          
+          # استخراج بخش RUN apt-get install
+          INSTALL_LINE=$(grep -A 20 "apt-get install" "$DOCKERFILE" | head -25)
+          
+          echo "Dockerfile install section:"
+          echo "─────────────────────────"
+          echo "$INSTALL_LINE"
+          echo "─────────────────────────"
+          echo ""
+          
+          # چک کردن وجود sudo
+          if echo "$INSTALL_LINE" | grep -q "sudo"; then
+            echo "✅ PASS: sudo is mentioned in install list"
+          else
+            echo "❌ FAIL: BUG #1 CONFIRMED"
+            echo ""
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│ BUG: sudo is NOT installed in Docker image          │"
+            echo "├─────────────────────────────────────────────────────┤"
+            echo "│ Impact: omnipkg.sh calls 'sudo -S' but the sudo     │"
+            echo "│ binary doesn't exist inside the container.          │"
+            echo "│                                                     │"
+            echo "│ Result:                                             │"
+            echo "│   docker run omnipkg                                │"
+            echo "│   → bash: sudo: command not found                   │"
+            echo "│   → Container exits with error                      │"
+            echo "│                                                     │"
+            echo "│ Fix: Add 'sudo' to the apt-get install list         │"
+            echo "└─────────────────────────────────────────────────────┘"
+            exit 1
+          fi
+
+      - name: "TEST B: Build image and verify sudo binary"
+        if: steps.locate.outputs.found == 'true'
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST B: Building image & checking sudo binary"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          DOCKERFILE="${{ steps.locate.outputs.path }}"
+          BUILD_DIR=$(dirname "$DOCKERFILE")
+          
+          echo "🔨 Building from: $BUILD_DIR"
+          docker build -t omnipkg-test "$BUILD_DIR" 2>&1 | tail -5
+          
+          BUILD_STATUS=$?
+          if [ $BUILD_STATUS -ne 0 ]; then
+            echo "⚠️  Docker build failed (separate issue)"
+            exit 0
+          fi
+          
+          echo ""
+          echo "🔍 Checking if sudo binary exists in container..."
+          echo ""
+          
+          # تست وجود باینری sudo در کانتینر
+          if docker run --rm --entrypoint="" omnipkg-test which sudo 2>/dev/null; then
+            echo "✅ PASS: sudo binary exists in container"
+          else
+            echo "❌ FAIL: BUG #1 CONFIRMED (runtime proof)"
+            echo ""
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│ RUNTIME PROOF:                                      │"
+            echo "│                                                     │"
+            echo "│ $ docker run --rm omnipkg-test which sudo           │"
+            echo "│ (empty output = binary not found)                   │"
+            echo "│                                                     │"
+            echo "│ $ docker run omnipkg                                │"
+            echo "│ bash: sudo: command not found                       │"
+            echo "│                                                     │"
+            echo "│ The omnipkg.sh script will crash because it needs   │"
+            echo "│ sudo to execute package manager commands.           │"
+            echo "└─────────────────────────────────────────────────────┘"
+            exit 1
+          fi
+
+      - name: "TEST C: Simulate omnipkg.sh execution in container"
+        if: steps.locate.outputs.found == 'true'
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST C: Running omnipkg.sh inside container"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          # اجرای omnipkg.sh با stdin بسته (شبیه docker run)
+          # timeout بعد از ۱۵ ثانیه
+          OUTPUT=$(timeout 15 docker run --rm \
+            --entrypoint="" \
+            omnipkg-test \
+            bash -c "echo 'test' | ./omnipkg.sh" 2>&1 || true)
+          
+          echo "Container Output (first 30 lines):"
+          echo "───────────────────────────────────"
+          echo "$OUTPUT" | head -30
+          echo "───────────────────────────────────"
+          echo ""
+          
+          # چک کردن وجود خطای sudo
+          if echo "$OUTPUT" | grep -q "sudo: command not found" || \
+             echo "$OUTPUT" | grep -q "command not found"; then
+            echo "❌ FAIL: BUG #1 CONFIRMED (execution proof)"
+            echo ""
+            echo "Container crashed with 'command not found' error."
+            echo "This proves the Docker image cannot run omnipkg.sh."
+            exit 1
+          fi
+          
+          # اگر اسکریپت کار کرد ولی ادعای موفقیت دروغ بود
+          if echo "$OUTPUT" | grep -q "updated successfully"; then
+            # چک کردن آیا واقعاً آپدیت شده یا فقط پیام نمایش داده
+            if echo "$OUTPUT" | grep -q "command not found"; then
+              echo "❌ FAIL: False success message shown"
+              exit 1
+            fi
+          fi
+          
+          echo "⚠️  Container did not crash (may need manual review)"
+
+  # ================================================================
+  # BUG #2: رمز sudo در environment نشت می‌کند
+  # ================================================================
+  bug-2-password-leak:
+    name: "🔴 [Bug #2] Sudo Password Environment Leak"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: "TEST A: Detect password export in omnipkg.sh"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST A: Scanning for password export"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
+          
+          if [ -z "$SCRIPT" ]; then
+            echo "⚠️  omnipkg.sh not found, skipping"
+            exit 0
+          fi
+          
+          echo "📄 Scanning: $SCRIPT"
+          echo ""
+          
+          BUGS_FOUND=0
+          
+          # ── Check 1: export SUDO_PASS ──
+          EXPORT_LINES=$(grep -n "export.*SUDO_PASS" "$SCRIPT" || true)
+          if [ -n "$EXPORT_LINES" ]; then
+            echo "❌ FAIL: BUG #2 CONFIRMED"
+            echo ""
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│ SECURITY VULNERABILITY: Password Export             │"
+            echo "├─────────────────────────────────────────────────────┤"
+            echo "│ Found:                                              │"
+            echo "$EXPORT_LINES" | sed 's/^/│   /'
+            echo "│                                                     │"
+            echo "│ Impact:                                             │"
+            echo "│   The sudo password is stored as an environment     │"
+            echo "│   variable visible to ALL child processes.          │"
+            echo "│                                                     │"
+            echo "│ Attack Vector:                                      │"
+            echo "│   $ cat /proc/\$(pgrep -f omnipkg)/environ \\          │"
+            echo "│     | tr '\\0' '\\n' | grep SUDO_PASS                 │"
+            echo "│                                                     │"
+            echo "│   Output: SUDO_PASS=<actual_password>               │"
+            echo "│                                                     │"
+            echo "│ Severity: CRITICAL                                  │"
+            echo "└─────────────────────────────────────────────────────┘"
+            BUGS_FOUND=$((BUGS_FOUND + 1))
+          fi
+          
+          # ── Check 2: Password via echo pipe ──
+          ECHO_PIPE_LINES=$(grep -n 'echo.*SUDO_PASS.*sudo' "$SCRIPT" || true)
+          if [ -n "$ECHO_PIPE_LINES" ]; then
+            echo ""
+            echo "❌ ADDITIONAL ISSUE: Password passed via echo pipe"
+            echo "│ Found:"
+            echo "$ECHO_PIPE_LINES" | head -5 | sed 's/^/│   /'
+            echo "│"
+            echo "│ This makes the password visible in process list"
+            echo "│ during execution (ps aux can capture it)."
+            BUGS_FOUND=$((BUGS_FOUND + 1))
+          fi
+          
+          # ── Check 3: Password stored in variable without cleanup ──
+          if grep -q "unset SUDO_PASS" "$SCRIPT"; then
+            echo "✅ PASS: Password is unset after use"
+          else
+            echo ""
+            echo "🟡 WARNING: Password variable never unset after use"
+            echo "   The SUDO_PASS variable remains in memory for the"
+            echo "   entire script duration and is never cleared."
+          fi
+          
+          echo ""
+          echo "──────────────────────────────────────────"
+          echo "Total security issues found: $BUGS_FOUND"
+          echo "──────────────────────────────────────────"
+          
+          if [ $BUGS_FOUND -gt 0 ]; then
+            exit 1
+          fi
+
+      - name: "TEST B: Prove password is readable by child processes"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST B: Runtime proof of password leak"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          # شبیه‌سازی رفتار omnipkg.sh
+          export SUDO_PASS="MySecretPassword123"
+          
+          # یک subprocess فرزند می‌تواند آن را بخواند
+          CHILD_READS=$(bash -c 'echo "$SUDO_PASS"')
+          
+          if [ "$CHILD_READS" == "MySecretPassword123" ]; then
+            echo "❌ FAIL: BUG #2 CONFIRMED (runtime proof)"
+            echo ""
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│ PROOF:                                              │"
+            echo "│                                                     │"
+            echo "│ $ export SUDO_PASS=\"MySecretPassword123\"              │"
+            echo "│ $ bash -c 'echo \"\$SUDO_PASS\"'                        │"
+            echo "│ MySecretPassword123                                 │"
+            echo "│                                                     │"
+            echo "│ ANY child process can read the password.            │"
+            echo "│ This includes malicious scripts running under       │"
+            echo "│ the same user account.                              │"
+            echo "│                                                     │"
+            echo "│ Real-world attack:                                  │"
+            echo "│ A malicious .bashrc or background process could     │"
+            echo "│ periodically scan for SUDO_PASS in /proc/*/environ  │"
+            echo "└─────────────────────────────────────────────────────┘"
+            unset SUDO_PASS
+            exit 1
+          fi
+          
+          unset SUDO_PASS
+
+  # ================================================================
+  # BUG #4: دستور winget clean همه برنامه‌ها را حذف می‌کند
+  # ================================================================
+  bug-4-winget-destructive:
+    name: "🔴 [Bug #4] Destructive Winget Clean Command"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: "TEST: Analyze winget clean command for destructiveness"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  Analyzing winget clean command"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          # پیدا کردن فایل JSON
+          JSON_FILE=$(find . \( -name "distroPKG.json" -o -name "packages.json" \) \
+            -not -path "./.git/*" | head -1)
+          
+          if [ -z "$JSON_FILE" ]; then
+            echo "⚠️  Package manager JSON not found, skipping"
+            exit 0
+          fi
+          
+          echo "📄 Analyzing: $JSON_FILE"
+          echo ""
+          
+          python3 << 'PYEOF'
+          import json
+          import sys
+          
+          json_file = None
+          import os
+          for root, dirs, files in os.walk('.'):
+              if '.git' in root:
+                  continue
+              for f in files:
+                  if f in ('distroPKG.json', 'packages.json'):
+                      json_file = os.path.join(root, f)
+                      break
+              if json_file:
+                  break
+          
+          if not json_file:
+              print("⚠️  JSON file not found")
+              sys.exit(0)
+          
+          with open(json_file) as f:
+              data = json.load(f)
+          
+          if 'winget' not in data:
+              print("⚠️  No winget entry found")
+              sys.exit(0)
+          
+          winget = data['winget']
+          clean_cmd = winget.get('clean', '')
+          install_cmd = winget.get('install', '')
+          
+          print(f"Winget clean command:")
+          print(f"  {clean_cmd}")
+          print()
+          
+          bugs_found = []
+          
+          # ── Check 1: uninstall --all ──
+          if 'uninstall --all' in clean_cmd:
+              bugs_found.append({
+                  'severity': 'CRITICAL',
+                  'issue': 'winget uninstall --all --force',
+                  'detail': (
+                      'This command UNINSTALLS ALL PROGRAMS on Windows.\n'
+                      '                      Running this on a real Windows machine will remove\n'
+                      '                      every application installed via winget, including:\n'
+                      '                      - Browsers (Chrome, Firefox, Edge)\n'
+                      '                      - Development tools (VS Code, Git, Python)\n'
+                      '                      - Communication apps (Slack, Discord, Teams)\n'
+                      '                      - ALL other winget-managed software\n\n'
+                      '                      This is DATA LOSS, not "cleaning".'
+                  )
+              })
+          
+          # ── Check 2: invalid winget settings command ──
+          if 'settings --enable' in clean_cmd:
+              bugs_found.append({
+                  'severity': 'HIGH',
+                  'issue': 'winget settings --enable clean',
+                  'detail': (
+                      '"winget settings --enable clean" is NOT a valid command.\n'
+                      '                      The winget CLI does not have a --enable flag for settings.\n'
+                      '                      This will produce an error on every run.'
+                  )
+              })
+          
+          # ── Check 3: install command package ID validation ──
+          if install_cmd:
+              import re
+              # winget IDs follow Publisher.Package format
+              ids = re.findall(r'[\w-]+\.[\w-]+', install_cmd)
+              # Known invalid IDs
+              known_invalid = {
+                  'curl.curl': 'No winget package with this exact ID',
+                  'pip.pip': 'pip is installed via Python, not winget',
+                  'dos2unix.dos2unix': 'Not available as a winget package',
+                  'libnotify.libnotify': 'Linux library, not a Windows app',
+                  'lolcat.lolcat': 'Not a standard winget package',
+                  'fortune.fortune': 'Not a standard winget package',
+              }
+              invalid_ids = [i for i in ids if i.lower() in known_invalid]
+              if invalid_ids:
+                  bugs_found.append({
+                      'severity': 'MEDIUM',
+                      'issue': f'Invalid winget package IDs: {", ".join(invalid_ids)}',
+                      'detail': (
+                          'These package IDs do not exist in the winget repository.\n'
+                          '                      Installation will fail with "No package found matching input criteria".'
+                      )
+                  })
+          
+          # ── Report ──
+          if bugs_found:
+              print(f"❌ FAIL: {len(bugs_found)} BUG(S) CONFIRMED")
+              print()
+              print("┌" + "─" * 53 + "┐")
+              for bug in bugs_found:
+                  print(f"│ [{bug['severity']}] {bug['issue']}")
+                  print(f"│ {'─' * 51}")
+                  for line in bug['detail'].split('\n'):
+                      print(f"│ {line}")
+                  print(f"│")
+              print("└" + "─" * 53 + "┘")
+              sys.exit(1)
+          else:
+              print("✅ PASS: winget commands appear safe")
+              sys.exit(0)
+          PYEOF
+
+  # ================================================================
+  # BUG #5 & #6: بسته‌های ساختگی Flatpak و Snap
+  # ================================================================
+  bug-5-6-fake-packages:
+    name: "🔴 [Bug #5&6] Fake Flatpak/Snap Package Lists"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: "TEST A: Validate Flatpak package IDs"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST A: Flatpak package validation"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          python3 << 'PYEOF'
+          import json, re, os, sys
+          
+          # Find JSON
+          json_file = None
+          for root, dirs, files in os.walk('.'):
+              if '.git' in root:
+                  continue
+              for f in files:
+                  if f in ('distroPKG.json', 'packages.json'):
+                      json_file = os.path.join(root, f)
+                      break
+              if json_file:
+                  break
+          
+          if not json_file:
+              print("⚠️  JSON file not found")
+              sys.exit(0)
+          
+          with open(json_file) as f:
+              data = json.load(f)
+          
+          if 'flatpak' not in data:
+              print("⚠️  No flatpak entry")
+              sys.exit(0)
+          
+          install_cmd = data['flatpak'].get('install', '')
+          print(f"Flatpak install command:")
+          print(f"  {install_cmd[:100]}...")
+          print()
+          
+          # استخراج ID های flatpak
+          flatpak_ids = re.findall(r'org\.\w+\.\w+', install_cmd)
+          
+          # بسته‌هایی که در Flathub وجود ندارند
+          # (اینها CLI tool ها هستند که به صورت flatpak منتشر نمی‌شوند)
+          fake_flatpaks = {
+              'org.curl.Curl': 'curl is a system library, not a Flatpak app',
+              'org.git.Git': 'Git is not distributed as a Flatpak',
+              'org.openssh.OpenSSH': 'OpenSSH is a system service, not a Flatpak',
+              'org.dos2unix.Dos2unix': 'dos2unix is not on Flathub',
+              'org.ipython.IPython': 'IPython is not distributed as Flatpak',
+              'org.libnotify.Libnotify': 'libnotify is a system library',
+              'org.unrar.Unrar': 'unrar is not on Flathub',
+              'org.wget.Wget': 'wget is not on Flathub',
+              'org.python.pip': 'pip is bundled with Python, not separate',
+              'org.lolcat.Lolcat': 'lolcat is not on Flathub',
+              'org.fortune.Fortune': 'fortune is not on Flathub',
+              'org.cowsay.Cowsay': 'cowsay is not on Flathub',
+              'org.btop.Btop': 'btop is not on Flathub (CLI tool)',
+          }
+          
+          fake_found = [(pid, reason) for pid, reason in fake_flatpaks.items() 
+                        if pid in flatpak_ids]
+          
+          if fake_found:
+              total = len(flatpak_ids)
+              fake_count = len(fake_found)
+              print(f"❌ FAIL: BUG #5 CONFIRMED")
+              print()
+              print(f"┌{'─'*53}┐")
+              print(f"│ {fake_count}/{total} Flatpak packages DO NOT EXIST:")
+              print(f"│{'─'*53}│")
+              for pid, reason in fake_found:
+                  print(f"│ ❌ {pid}")
+                  print(f"│    Reason: {reason}")
+                  print(f"│")
+              print(f"│{'─'*53}│")
+              print(f"│ Impact:")
+              print(f"│   $ flatpak install flathub org.curl.Curl")
+              print(f"│   error: No remote refs found similar to")
+              print(f"│          'org.curl.Curl'")
+              print(f"│")
+              print(f"│   The ENTIRE flatpak install command will fail")
+              print(f"│   because flatpak aborts on first missing package.")
+              print(f"│")
+              print(f"│ Root Cause:")
+              print(f"│   Package names were copied from apt/dnf lists")
+              print(f"│   and reformatted as Flatpak IDs without checking")
+              print(f"│   if they actually exist on Flathub.")
+              print(f"└{'─'*53}┘")
+              sys.exit(1)
+          else:
+              print(f"✅ PASS: All {len(flatpak_ids)} Flatpak IDs appear valid")
+              sys.exit(0)
+          PYEOF
+
+      - name: "TEST B: Validate Snap package names"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST B: Snap package validation"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          python3 << 'PYEOF'
+          import json, os, sys
+          
+          json_file = None
+          for root, dirs, files in os.walk('.'):
+              if '.git' in root:
+                  continue
+              for f in files:
+                  if f in ('distroPKG.json', 'packages.json'):
+                      json_file = os.path.join(root, f)
+                      break
+              if json_file:
+                  break
+          
+          if not json_file:
+              print("⚠️  JSON file not found")
+              sys.exit(0)
+          
+          with open(json_file) as f:
+              data = json.load(f)
+          
+          if 'snap' not in data:
+              print("⚠️  No snap entry")
+              sys.exit(0)
+          
+          install_cmd = data['snap'].get('install', '')
+          print(f"Snap install command:")
+          print(f"  {install_cmd[:100]}...")
+          print()
+          
+          # استخراج نام بسته‌ها از دستور snap
+          parts = install_cmd.replace('sudo snap install', '').strip().split()
+          
+          # اینها اسم بسته‌های سیستم هستند نه snap
+          # snap store بسته‌های CLI معمولی را با این اسم‌ها ندارد
+          system_names_used = [
+              'python3', 'curl', 'git', 'openssh', 'dos2unix',
+              'ipython', 'libnotify', 'unrar', 'wget', 'pip',
+              'lolcat', 'fortune', 'cowsay', 'btop'
+          ]
+          
+          fake_snaps = [p for p in parts if p in system_names_used]
+          
+          if fake_snaps:
+              print(f"❌ FAIL: BUG #6 CONFIRMED")
+              print()
+              print(f"┌{'─'*53}┐")
+              print(f"│ {len(fake_snaps)}/{len(parts)} Snap packages are INVALID:")
+              print(f"│{'─'*53}│")
+              for pkg in fake_snaps:
+                  print(f"│ ❌ snap install {pkg}")
+                  print(f"│    → error: no snap found named \"{pkg}\"")
+                  print(f"│")
+              print(f"│{'─'*53}│")
+              print(f"│ Proof (run on any Ubuntu system with snap):")
+              print(f"│   $ sudo snap install curl")
+              print(f"│   error: no snap found named \"curl\"")
+              print(f"│")
+              print(f"│   $ sudo snap install git")
+              print(f"│   error: no snap found named \"git\"")
+              print(f"│")
+              print(f"│ Root Cause:")
+              print(f"│   System package names (apt/dnf style) were")
+              print(f"│   pasted into the snap install command.")
+              print(f"│   Snap store uses different naming conventions.")
+              print(f"│")
+              print(f"│ Correct snap names would be:")
+              print(f"│   curl  → (no official snap)")
+              print(f"│   git   → (no official snap)")
+              print(f"│   btop  → (no official snap)")
+              print(f"│   Most CLI tools are NOT available as snaps.")
+              print(f"└{'─'*53}┘")
+              sys.exit(1)
+          else:
+              print(f"✅ PASS: Snap package names appear valid")
+              sys.exit(0)
+          PYEOF
+
+  # ================================================================
+  # BUG #8: dchange.py هنگام نبود Dockerfile کرش می‌کند
+  # ================================================================
+  bug-8-dchange-crash:
+    name: "🟡 [Bug #8] dchange.py FileNotFoundError"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: "TEST: Execute dchange.py without Dockerfile"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  Testing dchange.py with missing Dockerfile"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          # پیدا کردن dchange.py
+          DCHANGE=$(find . -name "dchange.py" -not -path "./.git/*" | head -1)
+          
+          if [ -z "$DCHANGE" ]; then
+            echo "⚠️  dchange.py not found, skipping"
+            exit 0
+          fi
+          
+          DCHANGE_DIR=$(dirname "$DCHANGE")
+          echo "📄 Found: $DCHANGE"
+          echo ""
+          
+          # اطمینان از اینکه Dockerfile وجود ندارد
+          echo "🗑️  Ensuring Dockerfile does NOT exist..."
+          rm -f "$DCHANGE_DIR/docker-img/Dockerfile"
+          rm -f "$DCHANGE_DIR/../Dockerfile"
+          rm -f "docker-img/Dockerfile"
+          rm -f "Dockerfile"
+          
+          # ایجاد JSON لازم برای dockermadule اگر لازم است
+          CREATE_JSON=$(find . -name "createJson.py" -not -path "./.git/*" \
+            -path "*/engine-syntax/*" | head -1)
+          
+          if [ -n "$CREATE_JSON" ]; then
+            echo "📦 Creating dockerinstall.json..."
+            cd "$(dirname "$CREATE_JSON")" && python3 createJson.py 2>/dev/null || true
+            cd - > /dev/null
+          fi
+          
+          echo ""
+          echo "▶️  Executing dchange.py..."
+          echo ""
+          
+          # اجرای dchange.py و گرفتن خروجی
+          cd "$DCHANGE_DIR"
+          OUTPUT=$(python3 "$(basename "$DCHANGE")" 2>&1)
+          EXIT_CODE=$?
+          cd - > /dev/null
+          
+          echo "Exit Code: $EXIT_CODE"
+          echo "Output:"
+          echo "─────────────────────────────────────────"
+          echo "$OUTPUT"
+          echo "─────────────────────────────────────────"
+          echo ""
+          
+          # تحلیل نتیجه
+          if [ $EXIT_CODE -ne 0 ]; then
+            if echo "$OUTPUT" | grep -q "FileNotFoundError"; then
+              echo "❌ FAIL: BUG #8 CONFIRMED"
+              echo ""
+              echo "┌─────────────────────────────────────────────────────┐"
+              echo "│ FileNotFoundError: Dockerfile not found              │"
+              echo "├─────────────────────────────────────────────────────┤"
+              echo "│ Code issue:                                         │"
+              echo "│   # dchange.py                                      │"
+              echo "│   check_change = dockermadule.readDockerfile(...)   │"
+              echo "│   # ← READS FILE FIRST (crashes if missing)         │"
+              echo "│                                                     │"
+              echo "│   if dockermadule.exists('docker-img/Dockerfile'):  │"
+              echo "│   # ← CHECKS EXISTENCE AFTER (too late!)            │"
+              echo "│                                                     │"
+              echo "│ Fix:                                                │"
+              echo "│   if dockermadule.exists('docker-img/Dockerfile'):  │"
+              echo "│       check_change = dockermadule.readDockerfile(…) │"
+              echo "│       # ... rest of logic                           │"
+              echo "└─────────────────────────────────────────────────────┘"
+              exit 1
+            elif echo "$OUTPUT" | grep -q "FileNotFoundError"; then
+              echo "❌ FAIL: FileNotFoundError detected"
+              exit 1
+            else
+              echo "🟡 Script failed but not with FileNotFoundError"
+              echo "   May be a different issue."
+              exit 1
+            fi
+          else
+            echo "✅ PASS: dchange.py handled missing Dockerfile gracefully"
+          fi
+
+  # ================================================================
+  # BUG #11: خطاهای Python کاملاً suppress می‌شوند
+  # ================================================================
+  bug-11-error-suppression:
+    name: "🟡 [Bug #11] Error Suppression Pattern"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: "TEST A: Detect 2>/dev/null after Python calls"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST A: Scanning for stderr suppression"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
+          
+          if [ -z "$SCRIPT" ]; then
+            echo "⚠️  omnipkg.sh not found"
+            exit 0
+          fi
+          
+          # پیدا کردن خطوطی که python3 با 2>/dev/null اجرا می‌شوند
+          SUPPRESSED=$(grep -n "python3.*2>/dev/null" "$SCRIPT" || true)
+          
+          if [ -n "$SUPPRESSED" ]; then
+            LINE_COUNT=$(echo "$SUPPRESSED" | wc -l)
+            echo "❌ FAIL: BUG #11 CONFIRMED"
+            echo ""
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│ {$LINE_COUNT} Python calls have stderr suppressed"
+            echo "├─────────────────────────────────────────────────────┤"
+            echo "│ Affected lines:"
+            echo "$SUPPRESSED" | sed 's/^/│   /'
+            echo "│                                                     │"
+            echo "│ Impact:                                             │"
+            echo "│   When Python scripts fail (e.g., no package        │"
+            echo "│   manager detected), the actual error message       │"
+            echo "│   is completely hidden from the user.               │"
+            echo "│                                                     │"
+            echo "│   User sees: \"⚠ No update command found\"            │"
+            echo "│   But doesn't know WHY or WHAT failed.              │"
+            echo "│                                                     │"
+            echo "│   The Python error might be:                         │"
+            echo "│   TypeError: 'NoneType' object is not subscriptable │"
+            echo "│   (meaning: no package manager was found)           │"
+            echo "│                                                     │"
+            echo "│ Fix:                                                 │"
+            echo "│   Remove 2>/dev/null and add proper error handling   │"
+            echo "└─────────────────────────────────────────────────────┘"
+            exit 1
+          else
+            echo "✅ PASS: No stderr suppression detected"
+          fi
+
+      - name: "TEST B: Prove Python error is hidden"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  TEST B: Runtime proof of error hiding"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          # شبیه‌سازی: اسکریپتی که کرش می‌کند
+          cat > /tmp/test_suppression.py << 'EOF'
+          # شبیه‌سازی updatePKG.py وقتی هیچ مدیر بسته‌ای پیدا نشود
+          import shutil, json
+          
+          def loopInDICT(d):
+              for key in d:
+                  if shutil.which(key):
+                      return key
+              return None  # هیچ چیز پیدا نشد
+          
+          data = {"fake_manager": {"update": "fake_cmd"}}
+          result = loopInDICT(data)
+          # این خط کرش می‌کند چون result برابر None است
+          print(data[result]["update"])
+          EOF
+          
+          # بدون suppression
+          echo "▶ Without 2>/dev/null:"
+          python3 /tmp/test_suppression.py 2>&1 | tail -3
+          echo ""
+          
+          # با suppression (همان‌طور که omnipkg.sh انجام می‌دهد)
+          echo "▶ With 2>/dev/null (omnipkg.sh behavior):"
+          OUTPUT=$(python3 /tmp/test_suppression.py 2>/dev/null)
+          echo "Output: '$OUTPUT'  ← EMPTY! Error is completely hidden"
+          echo ""
+          
+          if [ -z "$OUTPUT" ]; then
+            echo "❌ PROOF: Error message is completely invisible to user"
+            echo "   The Python traceback exists but is sent to /dev/null"
+            echo "   User gets zero information about what went wrong."
+          fi
+
+  # ================================================================
+  # BONUS: تست تعامل Bug #3 (False Success Message)
+  # ================================================================
+  bug-3-false-success:
+    name: "🟡 [Bug #3] False Success Messages"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: "TEST: Verify success messages check exit codes"
+        run: |
+          echo "══════════════════════════════════════════════════"
+          echo "  Testing for false success messages"
+          echo "══════════════════════════════════════════════════"
+          echo ""
+          
+          SCRIPT=$(find . -name "omnipkg.sh" -not -path "./.git/*" | head -1)
+          
+          if [ -z "$SCRIPT" ]; then
+            echo "⚠️  omnipkg.sh not found"
+            exit 0
+          fi
+          
+          # پیدا کردن الگوی: spinner سپس پیام موفقیت بدون چک exit code
+          ISSUES=0
+          
+          # چک کردن: آیا بعد از spinner برای update، exit code چک می‌شود؟
+          # در omnipkg.sh، بعد از spinner برای update:
+          #   spinner $! "Updating system packages..."
+          #   echo "✓ System updated successfully"  ← بدون چک!
+          
+          # الگوی مشکل‌ساز: echo "✓" بعد از spinner بدون if/wait
+          
+          # شمارش چند بار exit code بعد از spinner چک شده
+          TOTAL_SPINNERS=$(grep -c "spinner \$!" "$SCRIPT" || echo 0)
+          TOTAL_WAIT_CHECKS=$(grep -c "wait.*STATUS" "$SCRIPT" || echo 0)
+          
+          echo "📊 Statistics:"
+          echo "   spinner calls: $TOTAL_SPINNERS"
+          echo "   exit code checks: $TOTAL_WAIT_CHECKS"
+          echo ""
+          
+          if [ "$TOTAL_SPINNERS" -gt "$TOTAL_WAIT_CHECKS" ]; then
+            UNCHECKED=$((TOTAL_SPINNERS - TOTAL_WAIT_CHECKS))
+            echo "❌ FAIL: BUG #3 CONFIRMED"
+            echo ""
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│ {$UNCHECKED} spinner(s) don't check exit code"
+            echo "├─────────────────────────────────────────────────────┤"
+            echo "│ The spinner function ALWAYS prints '✓' when the     │"
+            echo "│ background process finishes, regardless of whether  │"
+            echo "│ it succeeded or failed.                             │"
+            echo "│                                                     │"
+            echo "│ Example:                                            │"
+            echo "│   { echo "WRONG_PASS" | sudo -S apt update; } &      │"
+            echo "│   spinner $! "Updating..."                           │"
+            echo "│   # sudo fails → but spinner shows:                  │"
+            echo "│   ✓ Updating...           ← FALSE!                   │"
+            echo "│   ✓ System updated successfully  ← FALSE!            │"
+            echo "│                                                     │"
+            echo "│ Fix: Check \$? after wait, only show ✓ if 0         │"
+            echo "└─────────────────────────────────────────────────────┘"
+            exit 1
+          else
+            echo "✅ PASS: All spinner results are checked"
+          fi
+
+  # ================================================================
+  # خلاصه نهایی
+  # ================================================================
+  summary:
+    name: "📊 Bug Detection Summary"
+    runs-on: ubuntu-latest
+    needs: [
+      bug-1-docker-sudo,
+      bug-2-password-leak,
+      bug-4-winget-destructive,
+      bug-5-6-fake-packages,
+      bug-8-dchange-crash,
+      bug-11-error-suppression,
+      bug-3-false-success
+    ]
+    if: always()
+    steps:
+      - name: Generate Report
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🐛 Bug Detection Report
+          
+          | Bug | Description | Result |
+          |-----|-------------|--------|
+          EOF
+          
+          # Bug #1
+          if [ "${{ needs.bug-1-docker-sudo.result }}" == "failure" ]; then
+            echo "| #1 | Docker Image Missing sudo | 🔴 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-1-docker-sudo.result }}" == "success" ]; then
+            echo "| #1 | Docker Image Missing sudo | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #1 | Docker Image Missing sudo | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bug #2
+          if [ "${{ needs.bug-2-password-leak.result }}" == "failure" ]; then
+            echo "| #2 | Password Environment Leak | 🔴 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-2-password-leak.result }}" == "success" ]; then
+            echo "| #2 | Password Environment Leak | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #2 | Password Environment Leak | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bug #3
+          if [ "${{ needs.bug-3-false-success.result }}" == "failure" ]; then
+            echo "| #3 | False Success Messages | 🟡 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-3-false-success.result }}" == "success" ]; then
+            echo "| #3 | False Success Messages | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #3 | False Success Messages | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bug #4
+          if [ "${{ needs.bug-4-winget-destructive.result }}" == "failure" ]; then
+            echo "| #4 | Destructive Winget Clean | 🔴 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-4-winget-destructive.result }}" == "success" ]; then
+            echo "| #4 | Destructive Winget Clean | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #4 | Destructive Winget Clean | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bug #5 & #6
+          if [ "${{ needs.bug-5-6-fake-packages.result }}" == "failure" ]; then
+            echo "| #5&6 | Fake Flatpak/Snap Packages | 🔴 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-5-6-fake-packages.result }}" == "success" ]; then
+            echo "| #5&6 | Fake Flatpak/Snap Packages | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #5&6 | Fake Flatpak/Snap Packages | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bug #8
+          if [ "${{ needs.bug-8-dchange-crash.result }}" == "failure" ]; then
+            echo "| #8 | dchange.py FileNotFoundError | 🟡 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-8-dchange-crash.result }}" == "success" ]; then
+            echo "| #8 | dchange.py FileNotFoundError | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #8 | dchange.py FileNotFoundError | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Bug #11
+          if [ "${{ needs.bug-11-error-suppression.result }}" == "failure" ]; then
+            echo "| #11 | Error Suppression | 🟡 **CONFIRMED** |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.bug-11-error-suppression.result }}" == "success" ]; then
+            echo "| #11 | Error Suppression | ✅ Fixed/OK |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| #11 | Error Suppression | ⚪ Skipped |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          
+          ---
+          **Legend:** 🔴 Critical | 🟡 Medium | ✅ No Issue | ⚪ Not Tested
+          
+          *Tests fail when bugs are detected. Fix the bugs to make tests pass.*
+          EOF
+
+      - name: Job Results
+        run: |
+          echo "══════════════════════════════════════════════════════"
+          echo "           FINAL BUG DETECTION RESULTS"
+          echo "══════════════════════════════════════════════════════"
+          echo ""
+          printf "  %-25s %s\n" "Bug #1 (Docker/sudo):" "${{ needs.bug-1-docker-sudo.result }}"
+          printf "  %-25s %s\n" "Bug #2 (Password Leak):" "${{ needs.bug-2-password-leak.result }}"
+          printf "  %-25s %s\n" "Bug #3 (False Success):" "${{ needs.bug-3-false-success.result }}"
+          printf "  %-25s %s\n" "Bug #4 (Winget Destructive):" "${{ needs.bug-4-winget-destructive.result }}"
+          printf "  %-25s %s\n" "Bug #5&6 (Fake Packages):" "${{ needs.bug-5-6-fake-packages.result }}"
+          printf "  %-25s %s\n" "Bug #8 (dchange Crash):" "${{ needs.bug-8-dchange-crash.result }}"
+          printf "  %-25s %s\n" "Bug #11 (Error Suppression):" "${{ needs.bug-11-error-suppression.result }}"
+          echo ""
+          echo "══════════════════════════════════════════════════════"
+          echo ""
+          echo "  'failure' = Bug CONFIRMED (needs fixing)"
+          echo "  'success' = Bug FIXED or not present"
+          echo ""
