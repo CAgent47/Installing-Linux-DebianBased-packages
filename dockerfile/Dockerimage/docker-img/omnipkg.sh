@@ -177,6 +177,6 @@ echo -e "${MAGENTA}╚═══════════════════�
 
 echo ""
 echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${BGreen}    OmniPKG v2.0 - Made with   by CAgent_47${RESET}"
+echo -e "${BGreen}    OmniPKG v2.4.0 - Made with   by CAgent_47${RESET}"
 echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
