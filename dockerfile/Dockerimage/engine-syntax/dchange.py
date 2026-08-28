@@ -1,11 +1,14 @@
+import os
 import dockermadule
 
-Dockerfile = """
-FROM debian:bookworm
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+Dockerfile = r"""FROM debian:bookworm
 
 RUN apt-get update && apt-get install -y \
     bash \
     python3 \
+    sudo \
     jq \
     curl \
     git \
@@ -20,9 +23,13 @@ RUN chmod +x omnipkg.sh
 CMD ["./omnipkg.sh"]
 """
 
-check_change = dockermadule.readDockerfile('docker-img/Dockerfile')
-if dockermadule.exists('docker-img/Dockerfile'):
+DOCKERFILE_PATH = os.path.join(BASE_DIR, '..', 'docker-img', 'Dockerfile')
+
+if dockermadule.exists(DOCKERFILE_PATH):
+    check_change = dockermadule.readDockerfile(DOCKERFILE_PATH)
     if Dockerfile != check_change:
-        print("sudo docker compose up --build -d")
+        print(dockermadule.commandPrefix() + " docker compose up --build -d")
     else:
-        print("sudo docker compose up -d")
+        print(dockermadule.commandPrefix() + " docker compose up -d")
+else:
+    print(dockermadule.commandPrefix() + " docker compose up --build -d")

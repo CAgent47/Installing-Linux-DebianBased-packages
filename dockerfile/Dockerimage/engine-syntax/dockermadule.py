@@ -9,6 +9,7 @@ def detectSyntax(list):
     for index, syntax in list.items():
         if shutil.which(index):
             return syntax
+    return None
 
 def createJsonFile(file, list):
     if not os.path.exists(file):
@@ -21,6 +22,9 @@ def createJsonFile(file, list):
 def getCommand(manager, action):
     mode = "root" if os.geteuid() == 0 else "sudo"
     return manager[mode][action]
+
+def commandPrefix():
+    return "" if os.geteuid() == 0 else "sudo"
 
 def readDockerfile(file):
     with open(file, 'r') as CDFile:
