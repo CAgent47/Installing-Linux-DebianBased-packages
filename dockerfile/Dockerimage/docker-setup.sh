@@ -19,9 +19,9 @@ if [[ "$CONTAINER_NAME" ]]; then
         sudo docker compose down
         echo "Running Please Wait a moment"
         eval $(python3 engine-syntax/dchange.py)
-        echo "Contanier Activated Run your browser"
+        echo "Contanier Activated"
     else
         echo "Running Please Wait a moment"
         eval $(python3 engine-syntax/dchange.py)
-        echo "Contanier Activated Run your browser"
+        echo "Contanier Activated"
 fi
