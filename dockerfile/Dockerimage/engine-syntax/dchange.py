@@ -23,6 +23,6 @@ CMD ["./omnipkg.sh"]
 check_change = dockermadule.readDockerfile('docker-img/Dockerfile')
 if dockermadule.exists('docker-img/Dockerfile'):
     if Dockerfile != check_change:
-        print("sudo docker compose up --build -d")
+        print("sudo docker compose up --build")
     else:
-        print("sudo docker compose up -d")
+        print("sudo docker compose up")
