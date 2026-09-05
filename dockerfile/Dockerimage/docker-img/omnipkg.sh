@@ -17,14 +17,13 @@ Yellow='\033[0;33m'
 BRed='\033[1;31m'
 BCyan='\033[1;36m'
 BWhite='\033[1;37m'
-# TODO: fix BSD bootstraper
-# TODO: add python git curl installer for prerequisite
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Get sudo password once
 echo -e "${CYAN} Please enter your sudo password:${RESET}"
+echo -e "${YELLOW} [ WARNING ]: ${RESET}If you are root, do not enter a password and press Enter."
 read -s -p "Password: " SUDO_PASS
 echo ""
 echo ""
@@ -37,7 +36,7 @@ export -f sudo_cmd
 export SUDO_PASS
 
 # Keep sudo alive in background
-(while true; do echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; sleep 100; done) &
+(while true; do echo "$SUDO_PASS" | sudo -S -v 2>/dev/null; sleep 100000; done) &
 SUDO_KEEPALIVE_PID=$!
 
 # Spinner function
@@ -70,6 +69,7 @@ show_progress() {
 }
 
 # Animated header
+clear
 echo -e "\n${CYAN}╔══════════════════════════════════════════════════════════════╗${RESET}"
 echo -e "${CYAN}║${RESET}                                                                      "
 echo -e "${CYAN}║${RESET}  ${BWHITE}██████╗ ███╗   ███╗███╗   ██╗██╗██████╗ ██╗  ██╗ ██████╗ "
@@ -81,7 +81,7 @@ echo -e "${CYAN}║${RESET}  ${BWHITE} ╚═════╝ ╚═╝     ╚�
 echo -e "${CYAN}║${RESET}                                                                      "
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  ${GREEN}🌟 Universal Package Bootstrapper${RESET}                   "
-echo -e "${CYAN}║${RESET}  ${YELLOW}📌 v2.5.1${RESET}                                             "
+echo -e "${CYAN}║${RESET}  ${YELLOW}📌 ${CYAN}v2.5.1${RESET}                                             "
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  ${BLUE}🐧  Author   :${RESET} CAgent_47                              "
 echo -e "${CYAN}║${RESET}  ${BLUE}📦  License  :${RESET} MIT                                   "
@@ -177,6 +177,6 @@ echo -e "${MAGENTA}╚═══════════════════�
 
 echo ""
 echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${BGreen}    OmniPKG v2.5.1 - Made with   by CAgent_47${RESET}"
+echo -e "${BGreen}    OmniPKG ${CYAN}v2.5.1 - Made with   by CAgent_47${RESET}"
 echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""

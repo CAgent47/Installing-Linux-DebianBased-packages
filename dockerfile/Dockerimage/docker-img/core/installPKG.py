@@ -4,4 +4,4 @@ detectSyntax = omnimodule.loadJson('core/distroPKG.json')
 
 SyntaxInstallDetect = omnimodule.loopInDICT(detectSyntax)
 
-print(detectSyntax[SyntaxInstallDetect]["install"])
+print(detectSyntax[SyntaxInstallDetect][omnimodule.userMod()]["install"])
