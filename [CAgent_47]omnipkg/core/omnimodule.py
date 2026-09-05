@@ -15,6 +15,12 @@ def loadJson(file):
     with open(file, 'r') as loadJson:
         return json.load(loadJson)
 
+def userMod():
+    if os.geteuid() == 0:
+        return "root"
+    else:
+        return "sudo"
+
 def createJsonFile(file, list):
     with open(file, "w") as savePackages:
         json.dump(list, savePackages, indent=4)
