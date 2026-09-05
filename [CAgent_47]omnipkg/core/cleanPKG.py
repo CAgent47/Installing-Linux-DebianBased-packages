@@ -1,7 +1,7 @@
-import omnimadule
+import omnimodule
 
-detectSyntax = omnimadule.loadJson('core/distroPKG.json')
+detectSyntax = omnimodule.loadJson('core/distroPKG.json')
 
-SyntaxcleanDetect = omnimadule.loopInDICT(detectSyntax)
+SyntaxcleanDetect = omnimodule.loopInDICT(detectSyntax)
 
 print(detectSyntax[SyntaxcleanDetect]["clean"])

@@ -1,4 +1,4 @@
-import omnimadule
+import omnimodule
 pkg_managers_json = {
     "Author INFO": {
         "project": "Linux Package installer",
@@ -125,4 +125,4 @@ pkg_managers_json = {
 }
 pkg_file = 'core/distroPKG.json'
 
-omnimadule.createJsonFileIFNotExists(pkg_file, pkg_file, pkg_managers_json)
+omnimodule.createJsonFileIFNotExists(pkg_file, pkg_file, pkg_managers_json)
