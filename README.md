@@ -77,8 +77,8 @@ Every package manager's `update`, `install`, and `clean` commands live in `distr
 ## 🚀 Installation & Usage
 
 ```bash
-git clone https://github.com/CAgent47/OmniPKG.git
-cd OmniPKG
+git clone https://github.com/CAgent47/omniPKG.git
+cd omniPKG
 chmod +x omnipkg.sh
 ./omnipkg.sh
 ```
@@ -156,3 +156,5 @@ Distributed under the **MIT License**. See `LICENSE` for details.
 [GitHub](https://github.com/CAgent47) · [LinkedIn](https://www.linkedin.com/in/mohammad-shaygan-2a96a8387) · [X](https://x.com/CAgent_47)
 
 </div>
+
+![banner](Images/banner.png)
