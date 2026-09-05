@@ -10,6 +10,7 @@ def loopInDICT(dict):
         if detectPackageManager(key):
             return key
 
+
 def loadJson(file):
     with open(file, 'r') as loadJson:
         return json.load(loadJson)
