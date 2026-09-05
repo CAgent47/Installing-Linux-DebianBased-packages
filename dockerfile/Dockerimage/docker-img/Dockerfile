@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM debian:trixie-backports
 
 RUN apt-get update && apt-get install -y \
     bash \
