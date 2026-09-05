@@ -81,7 +81,7 @@ echo -e "${CYAN}║${RESET}  ${BWHITE} ╚═════╝ ╚═╝     ╚�
 echo -e "${CYAN}║${RESET}                                                                      "
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  ${GREEN}🌟 Universal Package Bootstrapper${RESET}                   "
-echo -e "${CYAN}║${RESET}  ${YELLOW}📌 v2.5.1${RESET}                                             "
+echo -e "${CYAN}║${RESET}  ${YELLOW}📌 ${CYAN}v2.5.1${RESET}                                             "
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${RESET}"
 echo -e "${CYAN}║${RESET}  ${BLUE}🐧  Author   :${RESET} CAgent_47                              "
 echo -e "${CYAN}║${RESET}  ${BLUE}📦  License  :${RESET} MIT                                   "
@@ -177,6 +177,6 @@ echo -e "${MAGENTA}╚═══════════════════�
 
 echo ""
 echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-echo -e "${BGreen}    OmniPKG v2.5.1 - Made with   by CAgent_47${RESET}"
+echo -e "${BGreen}    OmniPKG ${CYAN}v2.5.1 - Made with   by CAgent_47${RESET}"
 echo -e "${BCyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
