@@ -1,7 +1,7 @@
-import omnimadule
+import omnimodule
 
-detectSyntax = omnimadule.loadJson('core/distroPKG.json')
+detectSyntax = omnimodule.loadJson('core/distroPKG.json')
 
-SyntaxInstallDetect = omnimadule.loopInDICT(detectSyntax)
+SyntaxInstallDetect = omnimodule.loopInDICT(detectSyntax)
 
 print(detectSyntax[SyntaxInstallDetect]["install"])
